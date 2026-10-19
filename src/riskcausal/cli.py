@@ -29,5 +29,32 @@ def verify_data(profile: str = "full", render_only: bool = typer.Option(
     log.info("verification report: %s", path)
 
 
+@app.command()
+def process(profile: str = "dev") -> None:
+    """Build the processed PIT panel for a profile from the latest raw snapshot."""
+    from riskcausal.data.panel import build_panel
+
+    build_panel(load_config(profile))
+
+
+@app.command()
+def run(profile: str = "dev", rebuild_panel: bool = True) -> None:
+    """Full core pipeline: panel -> rolling graphs -> features -> walk-forward -> evaluation -> report."""
+    from riskcausal.pipeline import run_pipeline
+
+    run_dir = run_pipeline(load_config(profile), rebuild_panel=rebuild_panel)
+    typer.echo(str(run_dir))
+
+
+@app.command()
+def report(run_dir: str) -> None:
+    """Regenerate figures and metrics.md for an existing run from its saved artifacts."""
+    from riskcausal.evaluation.plots import make_figures
+    from riskcausal.evaluation.report import write_report
+
+    make_figures(run_dir)
+    typer.echo(str(write_report(run_dir)))
+
+
 if __name__ == "__main__":
     app()

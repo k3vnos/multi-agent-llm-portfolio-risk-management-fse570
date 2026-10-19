@@ -21,6 +21,8 @@ make test
 |---|---|
 | `make verify-data` | M1: downloads every candidate source, writes `data/raw/...` snapshot and regenerates `DATASET_MANIFEST.md` |
 | `.venv/bin/riskcausal verify-data --render-only` | re-render the manifest from the latest saved report |
+| `make dev` | M2 prototype end to end on the dev profile (6 ETFs + 4 indicators): PIT panel → rolling VarLiNGAM/Granger → instability features → fold-local Markov labels → walk-forward Bayesian logit / GBM + VIX, NFCI, rolling-corr VaR baselines → `outputs/runs/<run_id>/` (`metrics.md`, `metrics.json`, `predictions.parquet`, figures) |
+| `.venv/bin/riskcausal report <run_dir>` | regenerate figures and `metrics.md` from a run's saved artifacts |
 
 More stages are added milestone by milestone (see `PROGRESS.md`).
 

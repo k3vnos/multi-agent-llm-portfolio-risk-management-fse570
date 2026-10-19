@@ -371,3 +371,14 @@ Before installing or connecting anything, I confirm it is free for this use and 
 - Reproducibility check: run `make dev` twice from the same raw snapshot → identical metrics hash.
 - `riskcausal report --run <id>` regenerates every table/figure; README numbers are copied from that output only.
 - Optional layers: `pytest tests/agents tests/api`; `uvicorn api.main:app` then hit `/alerts` and the dashboard locally.
+
+---
+
+## H. Decisions log (resolved ambiguities)
+
+| Date | Item | Decision | Who |
+|---|---|---|---|
+| 2026-10-18 | E3 credit spread | **BAA10Y replaces ICE BofA HY OAS** (FRED serves HY OAS only from 2023-10-17). Methodological difference: BAA10Y is Moody's seasoned Baa corporate bond yield minus the 10-year Treasury constant-maturity yield — an *investment-grade* (lower-medium grade) yield spread, not an option-adjusted *high-yield* spread. It is less sensitive to default risk in the junk segment, contains no option adjustment for callable bonds, and is built from a fixed long-maturity bond index, so it tends to move less and later than HY OAS in credit stress. Results about "credit" nodes must be read as investment-grade spread dynamics. HY credit exposure is still represented through the HYG ETF in the full profile. | approved by team |
+| 2026-10-18 | E2 full-profile start | Full-profile graph sample starts **2007-04-11** (HYG listing; UUP listed 2007-03-01). Dev profile unaffected (all six dev ETFs exist from 2004-11-18). | approved by team |
+| 2026-10-18 | E15 ALFRED | Vintages downloaded for NFCI (800 vintages from 2011-05-25), UNRATE (441 from 1990-02-02), STLFSI4 (206 from 2022-11-10). **NFCI is unavailable point-in-time before 2011-05-25** and is never back-filled; the NFCI baseline is therefore scored only where it has validation data (common span). | data-driven |
+| 2026-10-18 | Graph timing | Graph windows aligned by observation date (keeps same-day dependence meaningful); every graph-derived feature is lagged +1 NYSE session because FRED publishes daily macro values the next day. | implementation |

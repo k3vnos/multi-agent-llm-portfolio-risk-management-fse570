@@ -40,7 +40,7 @@ Downloaded OK: **25/25**. Available from study start: **20**.
 
 ## 2. FRED / ALFRED macro series
 
-FRED API key present: **False** (free key; required only for ALFRED vintages). Current-vintage values come from the public `fredgraph.csv` endpoint.
+FRED API key present: **True** (free key; required only for ALFRED vintages). Current-vintage values come from the public `fredgraph.csv` endpoint.
 
 | series_id | name | freq | revised | status | first_date | last_date | covers_study_start | n_obs | missing_rate_since_start | alfred_vintages | error |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -51,9 +51,9 @@ FRED API key present: **False** (free key; required only for ALFRED vintages). C
 | T10Y2Y | 10y minus 2y Treasury | D | False | ok | 1976-06-01 | 2026-10-16 | True | 12591 | 0.04099 | not needed (series not revised) |  |
 | T10Y3M | 10y minus 3m Treasury | D | False | ok | 1982-01-04 | 2026-10-16 | True | 11200 | 0.04099 | not needed (series not revised) |  |
 | DGS10 | 10y Treasury yield | D | False | ok | 1962-01-02 | 2026-10-15 | True | 16182 | 0.04099 | not needed (series not revised) |  |
-| NFCI | Chicago Fed NFCI | W | True | ok | 1971-01-08 | 2026-10-09 | True | 2910 | 0.0 | PENDING — FRED_API_KEY not set (free key required) |  |
-| UNRATE | Unemployment rate | M | True | ok | 1948-01-01 | 2026-09-01 | True | 944 | 0.00383 | PENDING — FRED_API_KEY not set (free key required) |  |
-| STLFSI4 | St. Louis Fed Financial Stress Index | W | True | ok | 1993-12-31 | 2026-10-09 | True | 1711 | 0.0 | PENDING — FRED_API_KEY not set (free key required) |  |
+| NFCI | Chicago Fed NFCI | W | True | ok | 1971-01-08 | 2026-10-09 | True | 2910 | 0.0 | ok: 800 vintages 2011-05-25→2026-10-15 |  |
+| UNRATE | Unemployment rate | M | True | ok | 1948-01-01 | 2026-09-01 | True | 944 | 0.00383 | ok: 441 vintages 1990-02-02→2026-10-02 |  |
+| STLFSI4 | St. Louis Fed Financial Stress Index | W | True | ok | 1993-12-31 | 2026-10-09 | True | 1711 | 0.0 | ok: 206 vintages 2022-11-10→2026-10-14 |  |
 
 `missing_rate_since_start` for daily series counts FRED's own blank days (mostly market holidays).
 
@@ -83,4 +83,4 @@ Status: **ok** — GDELT 2.0 event/GKG files reachable; historical coverage from
 - ETF downloads failed: none
 - ETFs listed after study start (ragged panel, E2): ['KRE (2006-06-22)', 'HYG (2007-04-11)', 'DBC (2006-02-06)', 'USO (2006-04-10)', 'UUP (2007-03-01)']
 - FRED series not covering study start: ['BAMLH0A0HYM2 (from 2023-10-17)']
-- Revised series still lacking point-in-time vintages: ['NFCI', 'UNRATE', 'STLFSI4'] — **these may not be used as features/baselines until vintages are downloaded**
+- Revised series still lacking point-in-time vintages: none
