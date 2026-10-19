@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riskcausal"
+version = "0.1.0"
+description = "Rolling directed-dependence (VarLiNGAM) instability as an early-warning signal for market stress — FSE 570 capstone"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+    "pyarrow>=14",
+    "statsmodels>=0.14",
+    "lingam>=1.8",
+    "scikit-learn>=1.3",
+    "pymc>=5.10",
+    "arviz>=0.17",
+    "arch>=6.2",
+    "yfinance>=0.2.40",
+    "fredapi>=0.5",
+    "requests>=2.31",
+    "pandas_market_calendars>=4.3",
+    "pydantic>=2.5",
+    "pyyaml>=6",
+    "typer>=0.9",
+    "matplotlib>=3.8",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+news = ["huggingface_hub>=0.20", "duckdb>=0.9"]
+# Local-only LLM backend (Ollama). No paid-LLM SDKs, ever — see COST_POLICY.md.
+agents = ["ollama>=0.1", "jsonschema>=4"]
+api = ["fastapi>=0.110", "uvicorn>=0.27", "httpx>=0.26"]
+dashboard = ["streamlit>=1.30"]
+dev = ["pytest>=7.4", "pytest-cov>=4", "ruff>=0.3"]
+
+[project.scripts]
+riskcausal = "riskcausal.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "network: requires internet access (deselect with -m 'not network')",
+    "slow: long-running test",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

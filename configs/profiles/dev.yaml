@@ -1,0 +1,9 @@
+# Small working prototype (IMPLEMENTATION_PLAN §F2): 6 ETFs + 4 indicators.
+profile: dev
+etfs: [SPY, TLT, LQD, GLD, XLF, IEF]
+fred_series: [VIXCLS, BAA10Y, T10Y2Y, NFCI]
+graph_nodes:
+  etfs: [SPY, TLT, LQD, GLD, XLF, IEF]
+  macro: [VIXCLS, BAA10Y, T10Y2Y]      # daily series only (E4), entered as first differences
+control_features: [VIXCLS, NFCI]
+regime_series: SPY

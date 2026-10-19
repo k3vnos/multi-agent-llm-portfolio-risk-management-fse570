@@ -1,0 +1,46 @@
+# Shared defaults. Values marked H0 are initial *hypotheses* (IMPLEMENTATION_PLAN §F4), not tuned settings.
+seed: 570
+data_dir: data
+output_dir: outputs
+start_date: "2005-01-01"
+end_date: "2025-12-31"
+
+pit:
+  macro_release_lag_bdays: 1          # every macro value usable only from the next business day
+
+graph:                                # rolling VarLiNGAM — H0 settings (E6)
+  window: 250
+  step: 5
+  max_lag: 5
+  lag_criterion: bic
+  prune: true
+  edge_threshold: 0.05                # on standardised-variable coefficients
+granger:
+  max_lag: 5
+  alpha: 0.05                         # BH-FDR corrected
+
+regime:                               # Markov switching on realised vol — H0 (E9)
+  vol_window: 21
+  n_regimes: 2
+  min_calm_days: 10                   # E10
+  min_stress_days: 5
+target:
+  horizon: 10                         # predict stress onset within (t, t+h]  (E10)
+
+walkforward:                          # E13
+  min_train_years: 5
+  test_block: year
+  embargo_days: 5
+
+alerts:
+  max_false_alarms_per_year: 4        # E14
+
+# --- Zero-cost, local-only defaults (COST_POLICY.md). Do not change without team approval. ---
+agents:
+  enabled: false
+  backend: disabled                   # disabled | ollama (local only)
+  model: qwen2.5:7b
+api:
+  host: 127.0.0.1
+  port: 8000
+deploy: none

@@ -1,0 +1,8 @@
+profile: full
+etfs: all
+fred_series: all
+graph_nodes:
+  etfs: [SPY, IWM, EFA, EEM, XLF, TLT, LQD, HYG, GLD, UUP]
+  macro: [VIXCLS, BAA10Y, T10Y2Y]
+control_features: [VIXCLS, NFCI]
+regime_series: SPY
