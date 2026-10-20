@@ -356,6 +356,9 @@ def bayes_lead_intervals(draws_store: dict, truth: pd.DataFrame, P: pd.DataFrame
 
 def run_pipeline(cfg: Config, rebuild_panel: bool = True) -> Path:
     t_start = time.time()
+    from riskcausal.registry import git_sha
+
+    sha_at_start = git_sha()
     if rebuild_panel or not (processed_dir(cfg) / "graph_panel.parquet").exists():
         build_panel(cfg)
     g, gr, gdir = build_graphs(cfg)
@@ -371,7 +374,7 @@ def run_pipeline(cfg: Config, rebuild_panel: bool = True) -> Path:
     ms_full = _ms_fit(y_rv, cfg)
     label_eval = label_set(ms_full.smoothed, r.min_stress_days, r.min_calm_days, cfg.target.horizon
                            ).reindex(sessions)
-    run_dir = new_run_dir(cfg, tag=cfg.experiment or "")
+    run_dir = new_run_dir(cfg, tag=cfg.experiment or "", sha=sha_at_start)
     test_dates = pd.DatetimeIndex(sorted(P["date"].unique()))
     rules = list(alert_rules(cfg))
     valid_folds = [fi["k"] for fi in fold_info

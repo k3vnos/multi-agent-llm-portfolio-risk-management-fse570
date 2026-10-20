@@ -32,14 +32,15 @@ def git_sha() -> str:
         return "unknown"
 
 
-def new_run_dir(cfg: Config, tag: str = "") -> Path:
+def new_run_dir(cfg: Config, tag: str = "", sha: str | None = None) -> Path:
+    """`sha`: git state captured when the run *started* (the code that produced it); defaults to now."""
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     run_id = f"{stamp}_{cfg.profile}_{cfg.hash()}" + (f"_{tag}" if tag else "")
     run_dir = cfg.output_path / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     (run_dir / "config.yaml").write_text(yaml.safe_dump(cfg.model_dump(), sort_keys=False))
     write_json(run_dir / "provenance.json", {
-        "run_id": run_id, "created_utc": stamp, "git_sha": git_sha(), "config_hash": cfg.hash(),
+        "run_id": run_id, "created_utc": stamp, "git_sha": sha or git_sha(), "config_hash": cfg.hash(),
         "synthetic": False,
     })
     return run_dir
