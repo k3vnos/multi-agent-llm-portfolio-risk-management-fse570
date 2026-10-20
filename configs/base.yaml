@@ -6,7 +6,8 @@ start_date: "2005-01-01"
 end_date: "2025-12-31"
 
 pit:
-  macro_release_lag_bdays: 1          # every macro value usable only from the next business day
+  macro_release_lag_bdays: 1          # every macro value usable only from the next business day (floor)
+  daily_fallback_lag_bdays: 3         # FRED daily series where ALFRED has no first-release date (M3 audit)
 
 graph:                                # rolling VarLiNGAM — H0 settings (E6)
   window: 250
@@ -33,7 +34,8 @@ walkforward:                          # E13
   embargo_days: 5
 
 alerts:
-  max_false_alarms_per_year: 4        # E14
+  max_false_alarms_per_year: 4        # E14 (H0)
+  max_alert_day_share: 0.10           # M3, post-hoc: alerts on <= 10% of validation calm days (EXPERIMENT_LOG)
 
 # --- Zero-cost, local-only defaults (COST_POLICY.md). Do not change without team approval. ---
 agents:

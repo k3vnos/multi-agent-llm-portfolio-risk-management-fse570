@@ -77,8 +77,13 @@ def day_metrics(score: np.ndarray, target: np.ndarray, probabilistic: bool) -> d
 
 
 def choose_threshold(score: pd.Series, stress: pd.Series, onset: pd.Series, h: int, merge_gap: int,
-                     max_fa_per_year: float) -> tuple[float, dict]:
-    """Lowest threshold whose false-alarm rate on the validation span is within budget (max recall)."""
+                     max_fa_per_year: float, max_alert_day_share: float | None = None) -> tuple[float, dict]:
+    """Lowest threshold (max recall) on the validation span that keeps false-alarm episodes within budget and,
+    if `max_alert_day_share` is set, alerts on at most that share of validation calm days.
+
+    H0 rule (M2): false-alarm cap only. M3 rule (post-hoc, approved): false-alarm cap + alert-day budget, which
+    stops alert episodes from merging into long always-on stretches.
+    """
     s = score.to_numpy(dtype=float)
     ok = ~np.isnan(s)
     if ok.sum() < 50:
@@ -86,10 +91,14 @@ def choose_threshold(score: pd.Series, stress: pd.Series, onset: pd.Series, h: i
     n_years = ok.sum() / 252
     cands = np.unique(np.quantile(s[ok], np.linspace(0.50, 0.999, 200)))
     st, on = stress.to_numpy(), onset.to_numpy()
+    calm = ok & (st == 0)
     for thr in cands:
         alert = np.where(ok, s >= thr, False)
+        day_share = float(alert[calm].mean()) if calm.any() else 0.0
+        if max_alert_day_share is not None and day_share > max_alert_day_share:
+            continue
         m = event_metrics(alert, st, on, h, merge_gap, n_years)
         if m["false_alarms_per_year"] <= max_fa_per_year:
             return float(thr), {"status": "ok", "val_recall": m["recall"], "val_fa_per_year": m["false_alarms_per_year"],
-                                "val_onsets": m["n_onsets"]}
+                                "val_onsets": m["n_onsets"], "val_calm_alert_share": day_share}
     return float(np.nanmax(s) + 1e-12), {"status": "budget never met; threshold above max (no alerts)"}

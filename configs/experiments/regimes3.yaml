@@ -1,0 +1,7 @@
+description: >
+  M3 separate experiment (approved 2026-10-19): three-regime Markov model on log 21-day realised vol of SPY.
+  Pre-specified before running: stress = the highest-mean regime only; calm = the other two regimes. All other
+  settings unchanged. Motivation is post-hoc (under 2 regimes 41% of days are "stress" and March 2023 is not an
+  onset), so this is reported as an exploratory label-definition sensitivity, not a tuned setting.
+regime:
+  n_regimes: 3

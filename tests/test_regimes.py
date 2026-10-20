@@ -55,3 +55,17 @@ def test_ms_fit_is_deterministic_across_calls():
     a, b = fit_ms(y, 2, seed=7), fit_ms(y, 2, seed=7)
     assert a.llf == b.llf
     np.testing.assert_array_equal(a.smoothed.to_numpy(), b.smoothed.to_numpy())
+
+
+def test_three_regime_fit_labels_only_the_highest_regime_as_stress():
+    rng = np.random.default_rng(5)
+    regime = np.r_[np.zeros(250), np.ones(150), 2 * np.ones(80), np.zeros(200), np.ones(120), 2 * np.ones(80)]
+    regime = regime.astype(int)
+    mu, sd = np.array([-2.4, -1.8, -1.0]), np.array([0.08, 0.1, 0.15])
+    y = pd.Series(rng.normal(mu[regime], sd[regime]), index=pd.bdate_range("2010-01-01", periods=len(regime)))
+    f = fit_ms(y, 3, seed=0, n_starts=5)
+    assert f.stress_regime == int(np.argmax(f.regime_means))
+    acc = ((f.smoothed > 0.5).astype(int).to_numpy() == (regime == 2)).mean()
+    assert acc > 0.97
+    p = filtered_stress_prob(y, f, 3)
+    assert ((p > 0.5).to_numpy() == (regime == 2)).mean() > 0.95

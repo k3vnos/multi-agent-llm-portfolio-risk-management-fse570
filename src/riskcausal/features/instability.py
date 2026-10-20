@@ -2,8 +2,8 @@
 consecutive rolling windows (proposal §3 "Feature").
 
 Each component is kept separately (E7). A window's value compares it with the previous window only, so it
-depends on data up to that window's end. `to_daily` then makes each value usable `lag` sessions after the
-window end (graph inputs include macro values that FRED publishes the next day).
+depends on data up to that window's end. `window_availability` gives the first session at which every row of a
+window had been published, and `to_daily` makes each window's value usable only from then (LEAKAGE_AUDIT row 2).
 """
 
 from __future__ import annotations
@@ -50,13 +50,41 @@ def add_smoothed(df: pd.DataFrame, n_windows: int = 4) -> pd.DataFrame:
     return pd.concat([df, sm], axis=1)
 
 
-def to_daily(per_window: pd.DataFrame, sessions: pd.DatetimeIndex, lag: int) -> pd.DataFrame:
-    """Value at session t = latest window whose end is at least `lag` sessions before t."""
-    pos = sessions.get_indexer(per_window.index)
+def window_availability(ends: pd.DatetimeIndex, row_avail: pd.Series, window: int) -> pd.Series:
+    """First session at which window ending at each `ends` date (and every earlier window) was fully published.
+
+    A window uses rows end-window..end (the extra row feeds the first difference). Features compare a window with
+    earlier windows, so availability is carried forward as a running maximum. NaT = never available.
+    """
+    pos = row_avail.index.get_indexer(ends)
     if (pos < 0).any():
-        raise ValueError("window end dates must be NYSE sessions")
-    out = pd.DataFrame(np.nan, index=sessions, columns=per_window.columns)
-    avail_pos = pos + lag
-    keep = avail_pos < len(sessions)
-    out.iloc[avail_pos[keep]] = per_window.to_numpy()[keep]
-    return out.ffill()
+        raise ValueError("window end dates must be rows of the graph panel")
+    a = row_avail.to_numpy(dtype="datetime64[ns]").astype("int64").astype(float)
+    a[np.isnat(row_avail.to_numpy(dtype="datetime64[ns]"))] = np.inf
+    w = np.array([a[max(p - window, 0): p + 1].max() for p in pos])
+    w = np.maximum.accumulate(w)
+    out = pd.Series(pd.NaT, index=ends, dtype="datetime64[ns]")
+    fin = np.isfinite(w)
+    out[fin] = pd.to_datetime(w[fin].astype("int64"))
+    return out
+
+
+def source_window(ends: pd.DatetimeIndex, sessions: pd.DatetimeIndex, avail: pd.Series) -> np.ndarray:
+    """For each session, position in `ends` of the latest-ending window available by then (-1 = none yet)."""
+    av = pd.DatetimeIndex(avail.reindex(ends))
+    marker = np.full(len(sessions), -1)
+    ok = ~av.isna()
+    for i, p in zip(np.flatnonzero(ok), sessions.searchsorted(av[ok])):
+        if p < len(sessions):
+            marker[p] = max(marker[p], i)
+    return np.maximum.accumulate(marker)
+
+
+def to_daily(per_window: pd.DataFrame, sessions: pd.DatetimeIndex, avail: pd.Series) -> pd.DataFrame:
+    """Value at session t = the latest-ending window whose availability session is <= t."""
+    marker = source_window(pd.DatetimeIndex(per_window.index), sessions, avail)
+    vals = per_window.to_numpy(dtype=float)
+    out = np.full((len(sessions), vals.shape[1]), np.nan)
+    have = marker >= 0
+    out[have] = vals[marker[have]]
+    return pd.DataFrame(out, index=sessions, columns=per_window.columns)

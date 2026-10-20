@@ -19,6 +19,7 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 class PitCfg(BaseModel):
     macro_release_lag_bdays: int = 1
+    daily_fallback_lag_bdays: int = 3
 
 
 class GraphCfg(BaseModel):
@@ -54,6 +55,7 @@ class WalkForwardCfg(BaseModel):
 
 class AlertCfg(BaseModel):
     max_false_alarms_per_year: float = 4
+    max_alert_day_share: float | None = 0.10      # M3 post-hoc rule; None = original H0 rule only
 
 
 class AgentsCfg(BaseModel):
@@ -86,6 +88,7 @@ class Config(BaseModel):
     start_date: str = "2005-01-01"
     end_date: str = "2025-12-31"
     profile: str = "dev"
+    experiment: str | None = None
     etfs: list[str]
     fred_series: list[str]
     graph_nodes: GraphNodes
@@ -124,11 +127,18 @@ def _deep_merge(a: dict, b: dict) -> dict:
     return out
 
 
-def load_config(profile: str = "dev", overrides: dict | None = None, config_dir: Path = CONFIG_DIR) -> Config:
+def load_config(profile: str = "dev", overrides: dict | None = None, config_dir: Path = CONFIG_DIR,
+                experiment: str | None = None) -> Config:
+    """base.yaml <- profiles/<profile>.yaml <- experiments/<experiment>.yaml <- overrides."""
     base = yaml.safe_load((config_dir / "base.yaml").read_text())
     universe = yaml.safe_load((config_dir / "universe.yaml").read_text())
     prof = yaml.safe_load((config_dir / "profiles" / f"{profile}.yaml").read_text())
     merged = _deep_merge(base, prof)
+    if experiment:
+        exp = yaml.safe_load((config_dir / "experiments" / f"{experiment}.yaml").read_text())
+        exp.pop("description", None)
+        merged = _deep_merge(merged, exp)
+        merged["experiment"] = experiment
     if overrides:
         merged = _deep_merge(merged, overrides)
     if merged.get("etfs") == "all":

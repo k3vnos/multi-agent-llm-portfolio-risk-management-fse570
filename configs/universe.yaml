@@ -28,13 +28,18 @@ etfs:
   UUP:  {name: US Dollar Index, group: fx}
 
 fred:
-  VIXCLS:        {name: CBOE VIX close, freq: D, revised: false}
-  BAA10Y:        {name: Moody's Baa minus 10y Treasury, freq: D, revised: false}
-  AAA10Y:        {name: Moody's Aaa minus 10y Treasury, freq: D, revised: false}
-  BAMLH0A0HYM2:  {name: ICE BofA US HY OAS, freq: D, revised: false}
-  T10Y2Y:        {name: 10y minus 2y Treasury, freq: D, revised: false}
-  T10Y3M:        {name: 10y minus 3m Treasury, freq: D, revised: false}
-  DGS10:         {name: 10y Treasury yield, freq: D, revised: false}
+  # availability (non-revised daily series, LEAKAGE_AUDIT row 2):
+  #   market_close: value is public market data at the close of its date (CBOE VIX, Treasury yields); usable
+  #                 `macro_release_lag_bdays` (=1) sessions later, as in M2.
+  #   release:      vendor data that reaches the public through FRED with delays (Moody's, ICE BofA); usable the
+  #                 session after FRED's ALFRED first-release date (fallback lag where untracked).
+  VIXCLS:        {name: CBOE VIX close, freq: D, revised: false, availability: market_close}
+  BAA10Y:        {name: Moody's Baa minus 10y Treasury, freq: D, revised: false, availability: release}
+  AAA10Y:        {name: Moody's Aaa minus 10y Treasury, freq: D, revised: false, availability: release}
+  BAMLH0A0HYM2:  {name: ICE BofA US HY OAS, freq: D, revised: false, availability: release}
+  T10Y2Y:        {name: 10y minus 2y Treasury, freq: D, revised: false, availability: market_close}
+  T10Y3M:        {name: 10y minus 3m Treasury, freq: D, revised: false, availability: market_close}
+  DGS10:         {name: 10y Treasury yield, freq: D, revised: false, availability: market_close}
   NFCI:          {name: Chicago Fed NFCI, freq: W, revised: true}
   UNRATE:        {name: Unemployment rate, freq: M, revised: true}
   STLFSI4:       {name: St. Louis Fed Financial Stress Index, freq: W, revised: true}

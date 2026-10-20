@@ -47,3 +47,17 @@ def test_threshold_respects_false_alarm_budget():
     alert = (score >= thr).to_numpy()
     m = event_metrics(alert, zeros.to_numpy(), zeros.to_numpy(), 10, 5, 504 / 252)
     assert info["status"] == "ok" and m["false_alarms_per_year"] <= 4
+
+
+def test_alert_day_budget_caps_calm_alert_share_on_validation():
+    """M3 rule: the false-alarm cap alone lets one long merged episode cover most days; the budget prevents it."""
+    rng = np.random.default_rng(1)
+    idx = pd.bdate_range("2020-01-01", periods=504)
+    score = pd.Series(np.cumsum(rng.normal(size=504)), index=idx)      # persistent score -> long episodes
+    zeros = pd.Series(0, index=idx)
+    t0, i0 = choose_threshold(score, zeros, zeros, h=10, merge_gap=5, max_fa_per_year=4)
+    t1, i1 = choose_threshold(score, zeros, zeros, h=10, merge_gap=5, max_fa_per_year=4, max_alert_day_share=0.10)
+    assert i0["status"] == i1["status"] == "ok"
+    assert t1 >= t0
+    assert i1["val_calm_alert_share"] <= 0.10
+    assert i0["val_calm_alert_share"] > 0.10
