@@ -75,6 +75,14 @@ def _lag_counts(avail: pd.Series, sessions_all: pd.DatetimeIndex) -> dict:
     return {str(k): int(v) for k, v in pd.Series(lag).value_counts().sort_index().items()}
 
 
+def target_returns_from_raw(cfg: Config, tickers: list[str], sessions_all: pd.DatetimeIndex,
+                            sessions: pd.DatetimeIndex) -> pd.DataFrame:
+    """Log returns of regime-target tickers from the raw snapshot (no fill: NaN before listing)."""
+    raw = cfg.data_path / "raw" / "yfinance" / latest_snapshot(cfg)
+    close = pd.DataFrame({t: pd.read_parquet(raw / f"{t}.parquet")["close"] for t in tickers})
+    return log_returns(close.reindex(sessions_all)).reindex(sessions)
+
+
 def build_panel(cfg: Config) -> Path:
     snap = latest_snapshot(cfg)
     raw = cfg.data_path / "raw"
@@ -87,9 +95,8 @@ def build_panel(cfg: Config) -> Path:
     close = close.reindex(sessions_all)  # no fill: a missing bar stays missing
     rets = log_returns(close).reindex(sessions)
     # series that define regime targets (may lie outside the profile's ETFs, e.g. KRE); never used as features
-    tgt = sorted({cfg.regime_series, cfg.regime.target_series or cfg.regime_series})
-    tclose = pd.DataFrame({t: pd.read_parquet(raw / "yfinance" / snap / f"{t}.parquet")["close"] for t in tgt})
-    target_rets = log_returns(tclose.reindex(sessions_all)).reindex(sessions)
+    target_rets = target_returns_from_raw(cfg, sorted({cfg.regime_series, cfg.regime.target_series or
+                                                       cfg.regime_series}), sessions_all, sessions)
 
     graph = rets[cfg.graph_nodes.etfs].copy()
     row_avail = pd.Series(sessions, index=sessions)                    # ETF closes: known at that close

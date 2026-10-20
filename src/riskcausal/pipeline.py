@@ -126,7 +126,14 @@ def regime_series(cfg: Config) -> pd.Series:
     from riskcausal.data.transforms import realized_vol
 
     rets = pd.read_parquet(processed_dir(cfg) / "target_returns.parquet")
-    return np.log(realized_vol(rets[target_series(cfg)], cfg.regime.vol_window)).dropna()
+    t = target_series(cfg)
+    if t not in rets:      # panel built under another experiment: same rule, straight from the raw snapshot
+        from riskcausal.data.calendar import nyse_sessions
+        from riskcausal.data.panel import target_returns_from_raw
+
+        sessions_all = nyse_sessions("1990-01-01", str(rets.index.max().date()))
+        rets = target_returns_from_raw(cfg, [t], sessions_all, rets.index)
+    return np.log(realized_vol(rets[t], cfg.regime.vol_window)).dropna()
 
 
 def target_series(cfg: Config) -> str:
