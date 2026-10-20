@@ -137,3 +137,14 @@ def test_walkforward_cannot_see_retrospective_labels():
                   "run_walkforward")
     le_line = min(n.lineno for n in ast.walk(rp) if isinstance(n, ast.Name) and n.id == "label_eval")
     assert le_line > wf_line                     # retrospective labels are built only after all predictions
+
+
+def test_core_never_imports_optional_agent_or_api_layers():
+    """Row 11: LLM explanations can never feed predictions — the core package cannot even import them."""
+    import re
+
+    from riskcausal.config import PROJECT_ROOT
+
+    pat = re.compile(r"^\s*(from|import)\s+(riskcausal_agents|riskcausal_api|dashboard|ollama)\b", re.MULTILINE)
+    for py in (PROJECT_ROOT / "src" / "riskcausal").rglob("*.py"):
+        assert not pat.search(py.read_text()), py

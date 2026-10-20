@@ -46,9 +46,9 @@ def verify_etfs(cfg: Config, out_dir: Path) -> list[dict]:
             rec.update(
                 status="ok", first_date=first.date(), last_date=last.date(),
                 starts_by_study_start=bool(first <= pd.Timestamp(cfg.start_date) + pd.Timedelta(days=7)),
-                n_rows_since_start=int(len(have)), n_expected_sessions=int(len(expected)),
+                n_rows_since_start=len(have), n_expected_sessions=len(expected),
                 missing_session_rate=round(1 - len(expected.intersection(have)) / max(len(expected), 1), 5),
-                extra_non_session_rows=int(len(have.difference(sessions))),
+                extra_non_session_rows=len(have.difference(sessions)),
                 nan_close=int(close.isna().sum()), zero_volume_days=int((df["volume"] == 0).sum()),
                 max_abs_daily_logret=round(float(lr.abs().max()), 4),
                 adjusted="auto_adjust=True (splits+dividends)",
@@ -93,7 +93,7 @@ def verify_fred(cfg: Config, out_dir: Path, alfred_dir: Path) -> list[dict]:
                 vpath = alfred_dir / f"{sid}_vintages.parquet"
                 v.to_parquet(vpath)
                 rec["alfred"] = {
-                    "status": "ok", "n_rows": int(len(v)), "n_vintages": int(v["realtime_start"].nunique()),
+                    "status": "ok", "n_rows": len(v), "n_vintages": int(v["realtime_start"].nunique()),
                     "first_vintage": v["realtime_start"].min().date(),
                     "last_vintage": v["realtime_start"].max().date(),
                     "file": str(vpath.relative_to(PROJECT_ROOT)), "sha256": sha256_file(vpath),
@@ -126,7 +126,7 @@ def verify_fnspid() -> dict:
                 try:
                     df = ingest_fnspid.sample_csv(path, nbytes=400_000, offset=off, header=cols if off else None)
                     d = pd.to_datetime(df[date_col], errors="coerce", utc=True, format="mixed").dropna() if date_col else []
-                    probes.append({"offset_frac": round(float(frac), 3), "n_rows": int(len(df)),
+                    probes.append({"offset_frac": round(float(frac), 3), "n_rows": len(df),
                                    "min_date": str(d.min().date()) if len(d) else None,
                                    "max_date": str(d.max().date()) if len(d) else None,
                                    "tickers": sorted(map(str, df.get("Stock_symbol", pd.Series()).dropna()

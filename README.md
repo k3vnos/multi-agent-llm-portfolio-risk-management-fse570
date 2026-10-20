@@ -22,7 +22,13 @@ make test
 | `make verify-data` | M1: downloads every candidate source, writes `data/raw/...` snapshot and regenerates `DATASET_MANIFEST.md` |
 | `.venv/bin/riskcausal verify-data --render-only` | re-render the manifest from the latest saved report |
 | `make dev` | M2 prototype end to end on the dev profile (6 ETFs + 4 indicators): PIT panel → rolling VarLiNGAM/Granger → instability features → fold-local Markov labels → walk-forward Bayesian logit / GBM + VIX, NFCI, rolling-corr VaR baselines → `outputs/runs/<run_id>/` (`metrics.md`, `metrics.json`, `predictions.parquet`, figures) |
+| `.venv/bin/riskcausal fetch-releases --profile dev` | M3: ALFRED first-release dates for the profile's non-revised daily FRED series (free key); required before `process`/`run` for `availability: release` series |
+| `.venv/bin/riskcausal run --profile dev --experiment regimes3` | run with an overlay from `configs/experiments/<name>.yaml` (run id gets the experiment tag) |
+| `.venv/bin/riskcausal diagnose-graphs --profile dev` | bootstrap noise floor for window-to-window graph change (written next to the graph cache) |
 | `.venv/bin/riskcausal report <run_dir>` | regenerate figures and `metrics.md` from a run's saved artifacts |
+
+Every run also writes `audit.json`: real-data leakage checks (fold geometry, prediction placement, publication
+timing of every FRED value behind each feature, no back-filled listings). See `LEAKAGE_AUDIT.md`.
 
 More stages are added milestone by milestone (see `PROGRESS.md`).
 
