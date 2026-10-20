@@ -208,3 +208,83 @@ features is unchanged under these labels (they are below chance).
 3. Approve the M4 robustness grid (`configs/experiments/robustness.yaml`, validation folds only) and DCC-GARCH.
 
 **Next:** M4 — robustness on validation folds, DCC-GARCH baseline, block-bootstrap CIs, Week-8 decision memo.
+
+## M4 — Robustness on validation data, DCC-GARCH, confidence intervals, decision gate — 2026-10-20
+**Completed:**
+- **Pre-registration first:** `configs/experiments/robustness.yaml` committed (7464cfa) before any M4 code ran —
+  label-selection rule, graph grid, target sensitivity, CI method, DCC-GARCH spec, banking-stress definitions.
+- **Validation-only selection** (`riskcausal m4-select`, run `20261020T050131Z_dev_84f1d5ecaf_m4select`):
+  - Label model: 3 regimes beat 2 on validation predictive log-likelihood in 15 of 16 folds (median −0.200 →
+    +0.057 per obs; label agreement 0.964 → 0.983). **2 regimes stays primary** (team decision); 3 regimes is
+    reported as the validation-selected secondary.
+  - Graph grid (W {126, 250, 500} × edge {0.03, 0.05, 0.10}): **W=500, edge 0.05** selected under both label sets.
+    Best instability validation PR-AUC 0.246 vs VIX 0.411 (2 regimes).
+  - Target sensitivity (h 5/20, min stress 3/10; validation, descriptive): instability-only stays below
+    controls and VIX in every variant except h=20, where all methods converge (base rate 0.24).
+- **DCC-GARCH baseline** (Engle 2002; GARCH(1,1)+DCC(1,1) QML, refit per fold ≤ inner_end / ≤ train_end; scores
+  `dcc_var`, `dcc_corr`).
+- **CIs:** paired stationary block bootstrap (mean block 63, 2,000 reps) + Jeffreys intervals, computed from
+  saved predictions (`riskcausal ci <run>`), for every M3/M4 run — no refits.
+- **Locked test runs** (scored once): primary (selected config, 2 regimes) and pre-registered secondary (3 regimes).
+- **Exploratory banking/credit stress** (kept separate from the SPY target): B1 KRE-volatility target (full
+  walk-forward), B2 descriptive BAA10Y regime check.
+- Week-8 decision memo: `DECISION_MEMO_M4.md`.
+- Efficiency: Markov fits cached on disk (identical results); validation grid with fast GBM/MAP-logit
+  (9 configs × 2 label sets in ~2 min); W=126/500 graph builds 62 s / 84 s; CIs from saved predictions.
+
+**Tests:** `.venv/bin/pytest` → **67 passed** (0 failed; 60 at M3); `ruff check src tests` clean. New: DCC
+no-lookahead and parameter recovery, Markov cache identity, predictive log-likelihood ignores later data,
+bootstrap/Jeffreys, validation selection never reads after `train_end`; walk-forward perturbation tests now also
+perturb DCC-GARCH inputs.
+
+**Actual results — locked primary** (`20261020T071838Z_dev_89c4b14759_m4_selected`, 2012-01-03 → 2026-10-16,
+24 onsets, audit PASSED). ROC-AUC [95% CI]; event metrics under the M3 alert rule:
+
+| method | ROC-AUC [95% CI] | PR-AUC | detected | precision |
+|---|---|---|---|---|
+| VIX level | 0.735 [0.651, 0.815] | 0.300 | 15/24 | 0.36 |
+| Bayes — controls | 0.699 [0.616, 0.780] | 0.249 | 16/24 | 0.33 |
+| GBM — controls | 0.640 [0.560, 0.714] | 0.172 | 16/24 | 0.33 |
+| Bayes — combined | 0.608 [0.500, 0.715] | 0.131 | 13/24 | 0.33 |
+| GBM — combined | 0.598 [0.501, 0.691] | 0.150 | 10/24 | 0.26 |
+| DCC-GARCH VaR | 0.571 [0.472, 0.676] | 0.162 | 13/24 | 0.36 |
+| Bayes — Granger | 0.553 [0.453, 0.653] | 0.110 | 5/24 | 0.24 |
+| rolling-corr VaR | 0.511 [0.399, 0.631] | 0.105 | 5/24 | 0.60 |
+| GBM — instability | 0.495 [0.398, 0.594] | 0.095 | 4/24 | 0.22 |
+| Bayes — instability | 0.490 [0.382, 0.597] | 0.093 | 7/24 | 0.70 |
+| NFCI (PIT) | 0.489 [0.383, 0.598] | 0.095 | 9/24 | 0.67 |
+| DCC correlation | 0.474 [0.363, 0.586] | 0.109 | 8/24 | 0.44 |
+| GBM — Granger | 0.459 [0.357, 0.562] | 0.090 | 5/24 | 0.19 |
+| instability composite | 0.403 [0.298, 0.511] | 0.081 | 5/24 | 0.27 |
+
+Paired differences (95% CI): every graph-based method minus VIX excludes 0 (worse). Instability added to
+controls: Bayes **−0.090 [−0.185, −0.010]** (significantly worse), GBM −0.042 [−0.124, 0.042]. Bayes-controls
+vs VIX −0.037 [−0.097, 0.017] (not distinguishable). Posterior recall (5/50/95%): Bayes controls 0.67/0.71/0.79,
+combined 0.50/0.54/0.62, instability 0.21/0.29/0.33.
+
+**Secondary — 3-regime labels, same settings** (`…64c063c907_m4_selected+regimes3_label`, 14 onsets in span):
+VIX 0.765 [0.637, 0.882], Bayes controls 0.753, Bayes combined 0.689, DCC VaR 0.600, Bayes instability 0.537,
+GBM instability 0.506, composite 0.421. Combined − controls: Bayes −0.065 [−0.199, 0.054]. Validation had shown
+combined > controls for this config (PR-AUC 0.358 vs 0.281); it did not carry over to test.
+
+**Exploratory banking stress** (B1, `…ab1b3e098a_m4_selected+banking_kre`; KRE vol regimes 18.6% / 41.0%,
+stress 36% of days, 23 onsets in span): **2023-03-09 (SVB) is an onset under this target.** ROC-AUC: Bayes
+controls 0.737, VIX 0.732, Bayes combined 0.723, DCC VaR 0.651, NFCI 0.649, instability-only 0.62, composite
+0.453; combined − controls −0.015 [−0.085, 0.065]. In the 10 sessions before 2023-03-09, under the M3 rule only
+DCC correlation (10 days) and GBM-Granger (5 days) were alerting — one event, not evidence. B2 (BAA10Y level,
+descriptive): Markov flags an onset on 2023-03-15, but the measure is crude (58% of all days "stress").
+
+**Conclusion at the decision gate (`DECISION_MEMO_M4.md`):** on the dev profile, no configuration — H0,
+validation-selected, 3-regime labels, or the banking-stress target — shows directed-dependence instability
+beating VIX or adding to the controls; several differences are significantly negative. Recommendation: report a
+rigorous negative result, plus one locked full-profile run (M5) as the generality check.
+
+**Problems found and fixed in M4:** KRE target missing from the panel (first run failed; target now computed from
+the raw snapshot); run provenance recorded the git sha at run end, not start (fixed in 58253a6 — the three M4
+runs record 58253a6 but used 252cc7c / 0ce3cdd, logged in EXPERIMENT_LOG).
+
+**Unresolved:** event-level metrics rest on 14–24 onsets (wide Jeffreys intervals); the W=500 window drops the
+2011 test fold (features start later), so M4 runs cover 2012–2026, as did the M3 common span; the
+validation-selected config did worse on test than H0 (within noise).
+
+**Next:** see "What remains before the multi-agent system and dashboard" in the M4 summary; M5 needs your go-ahead.

@@ -25,6 +25,10 @@ make test
 | `.venv/bin/riskcausal fetch-releases --profile dev` | M3: ALFRED first-release dates for the profile's non-revised daily FRED series (free key); required before `process`/`run` for `availability: release` series |
 | `.venv/bin/riskcausal run --profile dev --experiment regimes3` | run with an overlay from `configs/experiments/<name>.yaml` (run id gets the experiment tag) |
 | `.venv/bin/riskcausal diagnose-graphs --profile dev` | bootstrap noise floor for window-to-window graph change (written next to the graph cache) |
+| `.venv/bin/riskcausal m4-select --profile dev` | M4 pre-registered validation-only selection (labels, graph grid, target sensitivity) → `selection.md` + `configs/experiments/m4_selected.yaml` |
+| `.venv/bin/riskcausal ci <run_dir>` | block-bootstrap and Jeffreys confidence intervals from saved predictions → `ci.md` |
+| `.venv/bin/riskcausal credit-regimes --profile dev` | exploratory descriptive credit-spread regime check |
+| `.venv/bin/riskcausal run --profile dev --experiment m4_selected` | the M4 locked configuration (overlays combine: `m4_selected,banking_kre`) |
 | `.venv/bin/riskcausal report <run_dir>` | regenerate figures and `metrics.md` from a run's saved artifacts |
 
 Every run also writes `audit.json`: real-data leakage checks (fold geometry, prediction placement, publication

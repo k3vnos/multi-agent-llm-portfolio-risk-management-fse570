@@ -55,6 +55,15 @@ so the data package (calendar, ingest, PIT, panel, verification) was missing fro
 `1bd4292`. Patterns are now anchored (`/data/`, `/outputs/`) and the package is committed (`0d05429`). The M2
 runs' recorded git sha therefore does not pin the data-package code they used.
 
+## M4 additions
+- **DCC-GARCH** parameters are fit per fold on data ≤ inner_end (validation scores) and ≤ train_end (test scores);
+  the score at t is the forecast for t+1 from returns ≤ t (`tests/test_m4_components.py`, and the walk-forward
+  perturbation tests now perturb DCC inputs too).
+- **Validation-only selection** never reads a row after a fold's train_end
+  (`tests/test_m4_components.py::test_validation_selection_never_reads_after_train_end`).
+- **Label-model selection** uses one-step-ahead predictive likelihood with parameters fit ≤ inner_end
+  (`::test_predictive_loglik_ignores_data_after_end_and_prefers_true_model`).
+
 ## Notes
 - **GBM early stopping is disabled**: scikit-learn's early stopping holds out a *random* subset of training rows.
 - **Thresholds** for every method are chosen on the inner validation span (last 2 training years). Two rules are
