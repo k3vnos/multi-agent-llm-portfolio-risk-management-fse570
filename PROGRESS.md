@@ -140,7 +140,7 @@ What these numbers do and do not show (H0 settings, dev profile, no confidence i
 - Separate 3-regime experiment (`configs/experiments/regimes3.yaml`); validation-fold predictions now saved
   (median-over-folds metrics) for the M4 selection; graph noise-floor diagnostic (`diagnose-graphs`).
 
-**Tests:** `.venv/bin/pytest` → **61 passed** (0 failed; 36 at M2); `ruff check src tests` clean (now including
+**Tests:** `.venv/bin/pytest` → **60 passed** (0 failed; 36 at M2); `ruff check src tests` clean (now including
 `src/riskcausal/data/`).
 **Runs (2, both reusing cached graphs):** `20261020T035004Z_dev_24a61f320e` (2 regimes, 520 s) and
 `20261020T040849Z_dev_05b453a740_regimes3` (3 regimes, 1,625 s). Both audits PASSED: 0 violations across fold
