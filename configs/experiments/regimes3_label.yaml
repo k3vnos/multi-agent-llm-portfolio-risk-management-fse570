@@ -1,0 +1,3 @@
+description: 3-regime labels (stress = highest-mean regime); combine with m4_selected for the M4 secondary locked run.
+regime:
+  n_regimes: 3
