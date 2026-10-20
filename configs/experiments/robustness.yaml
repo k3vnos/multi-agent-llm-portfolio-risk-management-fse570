@@ -1,0 +1,63 @@
+# M4 PRE-REGISTRATION — written and committed 2026-10-19 BEFORE any M4 evaluation was run.
+# Selection uses inner-validation spans only (each fold: models fit <= inner_end, scored on the 2 years up to
+# train_end, truth = labels fit <= train_end). Outer test blocks are scored once, with the selected settings.
+# Disclosure: H0 settings (W=250, edge 0.05, 2 regimes) and the 3-regime labels were already scored on test in
+# M2/M3. None of the rules below uses test data; that history is reported, not hidden.
+
+label_selection:              # item 1 of the M4 brief
+  candidates: [2, 3]          # Markov regimes on log 21-day realised vol of SPY; stress = highest-mean regime
+  primary: 2                  # team decision: 2 regimes stays the primary baseline whatever the selection says
+  statistic: >
+    per-observation one-step-ahead predictive log-likelihood of the regime model on each fold's validation span
+    (parameters fit on data <= inner_end, filtered forward with fixed parameters); median over folds.
+    Target-agnostic on purpose: comparing classifier PR-AUC across label definitions would compare different
+    targets with different base rates.
+  rule: the candidate with the higher median statistic is "validation-selected"
+  diagnostic_only: label stability = agreement of stress states fit <= inner_end vs <= train_end on rows <= inner_end
+
+graph_grid:                   # feature-construction settings: selected on validation
+  window: [126, 250, 500]
+  edge_threshold: [0.03, 0.05, 0.10]
+  step: 5                     # fixed
+  labels: primary (2 regimes); the grid is repeated under 3 regimes only if label_selection selects 3
+  models: [gbm:instability, map_logit:instability]
+  map_logit: >
+    MAP estimate of the same Normal(0,1)-prior logistic model as the Bayesian logit (L2-penalised logistic, C=1 on
+    standardised features). The posterior is too costly for 9 configs x 16 folds; the locked test run uses NUTS.
+  statistic: median over folds of validation PR-AUC (calm days), averaged over the two models
+  rule: highest statistic; if within 0.005 of H0 (W=250, edge 0.05), keep H0
+  descriptive: validation PR-AUC of combined vs controls for each config (incremental value of instability)
+
+target_sensitivity:           # target definitions are NOT selected (different targets are not comparable)
+  vary_one_at_a_time: {horizon: [5, 20], min_stress_days: [3, 10]}     # H0: horizon 10, min_stress_days 5
+  evaluated_on: inner-validation only, selected graph config, primary labels
+  question: does the ranking instability vs controls vs VIX change?
+
+locked_test:
+  run: one full pipeline run (Bayesian NUTS + GBM + all baselines incl. DCC-GARCH), selected graph config,
+       primary labels, alert rule m3 (H0 rule also reported)
+  if_label_selection_picks_3: also report the selected config under 3-regime labels (secondary)
+
+confidence_intervals:
+  day_level: >
+    paired stationary block bootstrap (Politis & Romano 1994) over common-span test days, mean block length 63
+    sessions, 2000 replicates, seed 570; percentile 95% CIs for ROC-AUC, PR-AUC, and differences:
+    every method minus VIX, and combined minus controls (same model family).
+  event_level: Jeffreys Beta(0.5, 0.5) 95% intervals for recall (per onset) and precision (per calm alert episode)
+  significance_language: a difference is called "supported" only if its 95% CI excludes 0
+
+dcc_garch:                    # baseline E12 (Engle 2002)
+  univariate: GARCH(1,1), constant mean, normal QML, per dev ETF (arch package)
+  correlation: DCC(1,1) QML on standardised residuals, Qbar = training sample correlation
+  refit: per fold, on data <= inner_end (validation scores) and <= train_end (test scores); fixed parameters
+         filtered forward; the score at t uses returns <= t (one-step-ahead forecast for t+1)
+  scores: {dcc_var: 99% 1-day VaR of the equal-weight dev portfolio, dcc_corr: mean off-diagonal forecast correlation}
+
+banking_stress:               # item 2 — EXPLORATORY, separate target, never replaces the SPY-volatility target
+  B1_kre_vol: >
+    Markov 2-regime on log 21-day realised vol of KRE (regional banks, listed 2006-06); same onset rules
+    (min stress 5, min calm 10) and horizon (10). Full walk-forward with the same dev features, models and
+    baselines; the dev graph is unchanged (KRE is not a graph node).
+  B2_credit_spread: >
+    descriptive only (no models): Markov 2-regime on the point-in-time BAA10Y level; stress = higher-mean regime.
+  questions: is there a calm->stress onset in Feb-Mar 2023 under B1 / B2, and what did each method score then?
