@@ -52,8 +52,11 @@ def _figure(run_dir: Path, start: str, end: str, title: str, out: Path, syntheti
     ax = axes[0]
     _style(ax)
     _shade(ax, L)
-    ax.plot(F.index, F["rv21"], color=INK2, linewidth=1.5)
-    ax.set_title("SPY 21-day realised volatility (annualised) — shaded: retrospective stress regime; "
+    M = read_json(run_dir / "metrics.json")
+    tgt = M.get("target_series", "SPY")
+    rv = L["target_rv"] if "target_rv" in L else F["rv21"]
+    ax.plot(rv.index, rv, color=INK2, linewidth=1.5)
+    ax.set_title(f"{tgt} 21-day realised volatility (annualised) — shaded: retrospective stress regime; "
                  "dashed: onset", fontsize=9, color=INK, loc="left")
     for ax, (method, label), color in zip(axes[1:], SHOW, SERIES):
         _style(ax)

@@ -56,18 +56,20 @@ def _synthetic(seed=0):
     feats["vix_level"] += 3 * pd.Series(reg, index=sessions).shift(-5, fill_value=0)   # some signal
     for c in ("vix", "nfci", "corr_var"):
         feats[c] = rng.normal(size=n)
-    return feats, y
+    vol = np.where(reg == 1, 0.02, 0.008)
+    rets = pd.DataFrame(rng.normal(size=(n, 3)) * vol[:, None], index=sessions, columns=["A", "B", "C"])
+    return feats, y, rets
 
 
 @pytest.fixture(scope="module")
 def setup():
     cfg = load_config("dev")
-    fast_fit = functools.partial(fit_ms, n_starts=3)
     mp = pytest.MonkeyPatch()
-    mp.setattr(pl, "fit_ms", fast_fit)
-    feats, y = _synthetic()
-    base = pl.run_walkforward(cfg, feats, y, models=MODELS)
-    yield cfg, feats, y, base
+    mp.setattr(pl, "_ms_fit", lambda y, c: fit_ms(y, c.regime.n_regimes, seed=c.seed, n_starts=3))
+    feats, y, rets = _synthetic()
+    run = functools.partial(pl.run_walkforward, cfg, models=MODELS, returns=rets)
+    base = run(feats, y)
+    yield cfg, feats, y, rets, base
     mp.undo()
 
 
@@ -76,12 +78,13 @@ def _fold_rows(P, k):
 
 
 def test_perturbing_everything_after_a_fold_leaves_earlier_folds_unchanged(setup):
-    cfg, feats, y, (P, V, info, _, _) = setup
+    cfg, feats, y, rets, (P, V, info, _, _) = setup
     cut = pd.Timestamp(info[1]["test_end"])
-    f2, y2 = feats.copy(), y.copy()
+    f2, y2, r2 = feats.copy(), y.copy(), rets.copy()
     f2.loc[f2.index > cut] = f2.loc[f2.index > cut] * 7 + 3
     y2.loc[y2.index > cut] = y2.loc[y2.index > cut] + 2
-    P2, V2, info2, _, _ = pl.run_walkforward(cfg, f2, y2, models=MODELS)
+    r2.loc[r2.index > cut] = r2.loc[r2.index > cut] * 5          # DCC-GARCH inputs too
+    P2, V2, info2, _, _ = pl.run_walkforward(cfg, f2, y2, models=MODELS, returns=r2)
     for k in (0, 1):
         pd.testing.assert_frame_equal(_fold_rows(P, k), _fold_rows(P2, k))
         pd.testing.assert_frame_equal(_fold_rows(V, k), _fold_rows(V2, k))
@@ -91,11 +94,11 @@ def test_perturbing_everything_after_a_fold_leaves_earlier_folds_unchanged(setup
 
 def test_labels_after_train_end_never_reach_that_fold(setup):
     """Row 6/7: the regime series after train_end (which defines future targets) cannot change fold k at all."""
-    cfg, feats, y, (P, V, info, _, _) = setup
+    cfg, feats, y, rets, (P, V, info, _, _) = setup
     k = 2
     y2 = y.copy()
     y2.loc[y2.index > pd.Timestamp(info[k]["train_end"])] *= -1
-    P2, V2, info2, _, _ = pl.run_walkforward(cfg, feats, y2, models=MODELS)
+    P2, V2, info2, _, _ = pl.run_walkforward(cfg, feats, y2, models=MODELS, returns=rets)
     pd.testing.assert_frame_equal(_fold_rows(P, k), _fold_rows(P2, k))
     pd.testing.assert_frame_equal(_fold_rows(V, k), _fold_rows(V2, k))     # validation labels too
     assert info[k]["methods"] == info2[k]["methods"]
@@ -103,13 +106,14 @@ def test_labels_after_train_end_never_reach_that_fold(setup):
 
 def test_test_block_features_never_reach_thresholds_or_scaling(setup):
     """Rows 5/8: thresholds and the composite's standardisation come from validation/training rows only."""
-    cfg, feats, y, (P, _, info, _, _) = setup
+    cfg, feats, y, rets, (P, _, info, _, _) = setup
     k = 2
     ts, te = pd.Timestamp(info[k]["test_start"]), pd.Timestamp(info[k]["test_end"])
-    f2 = feats.copy()
+    f2, r2 = feats.copy(), rets.copy()
     blk = (f2.index >= ts) & (f2.index <= te)
     f2.loc[blk] = f2.loc[blk] * 10 - 4
-    P2, _, info2, _, _ = pl.run_walkforward(cfg, f2, y, models=MODELS)
+    r2.loc[blk] = r2.loc[blk] * 4
+    P2, _, info2, _, _ = pl.run_walkforward(cfg, f2, y, models=MODELS, returns=r2)
     a, b = _fold_rows(P, k), _fold_rows(P2, k)
     tcols = [c for c in a.columns if c.startswith("threshold")]
     pd.testing.assert_frame_equal(a[tcols], b[tcols])
@@ -118,7 +122,8 @@ def test_test_block_features_never_reach_thresholds_or_scaling(setup):
 
 
 def test_both_alert_rules_are_reported_and_budget_rule_is_stricter(setup):
-    _, _, _, (P, _, _, _, _) = setup
+    _, _, _, _, (P, _, _, _, _) = setup
+    assert {"dcc_var", "dcc_corr"} <= set(P["method"])
     assert {"threshold_h0", "threshold_m3", "alert_h0", "alert_m3"} <= set(P.columns)
     ok = np.isfinite(P["threshold_h0"]) & np.isfinite(P["threshold_m3"])
     assert (P.loc[ok, "threshold_m3"] >= P.loc[ok, "threshold_h0"] - 1e-12).all()

@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from riskcausal.baselines.dcc_garch import dcc_scores, fit_dcc
 from riskcausal.baselines.simple import corr_var_score, nfci_score, vix_score
 from riskcausal.causal.granger_rolling import RollingGranger, rolling_granger
 from riskcausal.causal.varlingam_rolling import RollingGraphs, rolling_varlingam
@@ -42,7 +43,8 @@ from riskcausal.features.instability import (
 )
 from riskcausal.models.bayes_logit import BayesLogit
 from riskcausal.models.gbm import GBM
-from riskcausal.regimes.markov import filtered_stress_prob, fit_ms
+from riskcausal.models.map_logit import MapLogit
+from riskcausal.regimes.markov import cached_fit_ms, filtered_stress_prob
 from riskcausal.regimes.targets import label_set
 from riskcausal.registry import new_run_dir, write_json
 from riskcausal.validation.walkforward import make_folds
@@ -60,7 +62,8 @@ FEATURE_SETS = {
 }
 COMPOSITE = ["vl_shd_b0_ma4", "vl_frob_b0_ma4", "vl_shd_lag_ma4", "vl_frob_lag_ma4"]   # pre-specified (H0)
 MODELS = [(m, fs) for m in ("bayes_logit", "gbm") for fs in FEATURE_SETS]
-SCORES = ["inst_composite", "vix", "nfci", "corr_var"]
+SCORES = ["inst_composite", "vix", "nfci", "corr_var", "dcc_var", "dcc_corr"]
+FOLD_FIT_SCORES = {"dcc_var", "dcc_corr"}      # baselines whose parameters are re-estimated per fold
 MERGE_GAP = 5              # alert episodes separated by <= 5 sessions are merged (H0)
 VAL_YEARS = 2
 
@@ -118,22 +121,33 @@ def build_features(cfg: Config, g: RollingGraphs, gr: RollingGranger) -> pd.Data
 
 
 def regime_series(cfg: Config) -> pd.Series:
+    """Log realised vol of the *target* series (default: the profile's regime series, SPY). An experiment may set
+    `regime.target_series` (e.g. KRE for banking stress); the control features stay on `regime_series`."""
     from riskcausal.data.transforms import realized_vol
 
-    rets = pd.read_parquet(processed_dir(cfg) / "returns.parquet")
-    return np.log(realized_vol(rets[cfg.regime_series], cfg.regime.vol_window)).dropna()
+    rets = pd.read_parquet(processed_dir(cfg) / "target_returns.parquet")
+    return np.log(realized_vol(rets[target_series(cfg)], cfg.regime.vol_window)).dropna()
+
+
+def target_series(cfg: Config) -> str:
+    return cfg.regime.target_series or cfg.regime_series
+
+
+def _ms_fit(y: pd.Series, cfg: Config):
+    """Markov fit through the on-disk cache (identical results; avoids refitting the same fold ends)."""
+    return cached_fit_ms(y, cfg.regime.n_regimes, cfg.seed, cfg.data_path / "interim" / "markov_cache")
 
 
 # ---------------------------------------------------------------- walk-forward
 def _labels(y: pd.Series, end: pd.Timestamp, cfg: Config, sessions: pd.DatetimeIndex):
     r = cfg.regime
-    fit = fit_ms(y.loc[:end], r.n_regimes, seed=cfg.seed)
+    fit = _ms_fit(y.loc[:end], cfg)
     L = label_set(fit.smoothed, r.min_stress_days, r.min_calm_days, cfg.target.horizon).reindex(sessions)
     return fit, L
 
 
 def _make_model(name: str, seed: int):
-    return BayesLogit(seed=seed) if name == "bayes_logit" else GBM(seed=seed)
+    return {"bayes_logit": BayesLogit, "gbm": GBM, "map_logit": MapLogit}[name](seed=seed)
 
 
 def _fit_predict(name, X_tr, y_tr, X_pr, seed):
@@ -181,7 +195,8 @@ def _record(cfg: Config, sessions: pd.DatetimeIndex, ctx: dict, method: str, sco
     return thr
 
 
-def run_walkforward(cfg: Config, feats: pd.DataFrame, y_rv: pd.Series, models=MODELS, scores=SCORES):
+def run_walkforward(cfg: Config, feats: pd.DataFrame, y_rv: pd.Series, models=MODELS, scores=SCORES,
+                    returns: pd.DataFrame | None = None):
     """Walk-forward over annual test folds. Everything fit for fold k uses data <= train_end(k) only."""
     sessions = feats.index
     h = cfg.target.horizon
@@ -237,7 +252,19 @@ def run_walkforward(cfg: Config, feats: pd.DataFrame, y_rv: pd.Series, models=MO
         # pre-specified score methods (no fitting beyond standardisation on rows <= inner_end)
         zref = feats.loc[:f.inner_end, COMPOSITE]
         comp = ((feats[COMPOSITE] - zref.mean()) / zref.std()).mean(axis=1, skipna=False)
+        fold_fit = {}
+        if returns is not None and FOLD_FIT_SCORES & set(scores):
+            # DCC-GARCH: parameters <= inner_end for validation scores, <= train_end for test scores
+            p_in, p_out = fit_dcc(returns, f.inner_end), fit_dcc(returns, f.train_end)
+            fold_fit = {"val": dcc_scores(returns, p_in), "test": dcc_scores(returns, p_out),
+                        "params": {"inner": {"a": p_in["a"], "b": p_in["b"]}, "outer": {"a": p_out["a"], "b": p_out["b"]}}}
         for method in scores:
+            if method in FOLD_FIT_SCORES:
+                if not fold_fit:
+                    continue
+                record(method, fold_fit["val"][method][val], fold_fit["test"][method][test],
+                       {"dcc_params": fold_fit["params"]})
+                continue
             s = comp if method == "inst_composite" else feats[method]
             record(method, s[val], s[test], {})
         fold_info.append(info)
@@ -329,11 +356,12 @@ def run_pipeline(cfg: Config, rebuild_panel: bool = True) -> Path:
     y_rv = regime_series(cfg)
     sessions = feats.index
 
-    P, V, fold_info, draws_store, label_filt = run_walkforward(cfg, feats, y_rv)
+    rets = pd.read_parquet(processed_dir(cfg) / "returns.parquet")[cfg.etfs]
+    P, V, fold_info, draws_store, label_filt = run_walkforward(cfg, feats, y_rv, returns=rets)
 
     # retrospective truth: built only after every prediction and threshold exists (scoring only)
     r = cfg.regime
-    ms_full = fit_ms(y_rv, r.n_regimes, seed=cfg.seed)
+    ms_full = _ms_fit(y_rv, cfg)
     label_eval = label_set(ms_full.smoothed, r.min_stress_days, r.min_calm_days, cfg.target.horizon
                            ).reindex(sessions)
     run_dir = new_run_dir(cfg, tag=cfg.experiment or "")
@@ -353,7 +381,7 @@ def run_pipeline(cfg: Config, rebuild_panel: bool = True) -> Path:
         }
     metrics = {
         "truth": "label_eval (retrospective full-sample smoothed Markov labels; scoring only)",
-        "experiment": cfg.experiment, "n_regimes": r.n_regimes,
+        "experiment": cfg.experiment, "n_regimes": r.n_regimes, "target_series": target_series(cfg),
         "alert_rules": {rl: {"max_fa_per_year": cfg.alerts.max_false_alarms_per_year, "max_calm_alert_share": b}
                         for rl, b in alert_rules(cfg).items()},
         "primary_rule": primary_rule(cfg),
@@ -371,7 +399,7 @@ def run_pipeline(cfg: Config, rebuild_panel: bool = True) -> Path:
     P.to_parquet(run_dir / "predictions.parquet")
     V.to_parquet(run_dir / "predictions_val.parquet")
     feats.to_parquet(run_dir / "features.parquet")
-    label_eval.to_parquet(run_dir / "labels_eval.parquet")
+    label_eval.assign(target_rv=np.exp(y_rv).reindex(sessions)).to_parquet(run_dir / "labels_eval.parquet")
     label_filt.to_parquet(run_dir / "labels_filtered_test.parquet")
     write_json(run_dir / "folds.json", fold_info)
     write_json(run_dir / "graph_cache.json", {"dir": str(gdir)})

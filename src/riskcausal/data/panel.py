@@ -2,6 +2,7 @@
 
 Outputs (data/processed/<profile>_<snapshot>/):
 - returns.parquet   : log returns of profile ETFs on NYSE sessions (NaN before listing — never back-filled)
+- target_returns.parquet: log returns of the series that define regime targets (labels only, never features)
 - graph_panel.parquet: graph nodes aligned by *observation date*: ETF log returns + first differences of daily
                        macro series. Graph-derived features are lagged by `graph_feature_lag` sessions downstream
                        so they only use values published by the decision date.
@@ -85,6 +86,10 @@ def build_panel(cfg: Config) -> Path:
 
     close = close.reindex(sessions_all)  # no fill: a missing bar stays missing
     rets = log_returns(close).reindex(sessions)
+    # series that define regime targets (may lie outside the profile's ETFs, e.g. KRE); never used as features
+    tgt = sorted({cfg.regime_series, cfg.regime.target_series or cfg.regime_series})
+    tclose = pd.DataFrame({t: pd.read_parquet(raw / "yfinance" / snap / f"{t}.parquet")["close"] for t in tgt})
+    target_rets = log_returns(tclose.reindex(sessions_all)).reindex(sessions)
 
     graph = rets[cfg.graph_nodes.etfs].copy()
     row_avail = pd.Series(sessions, index=sessions)                    # ETF closes: known at that close
@@ -123,6 +128,7 @@ def build_panel(cfg: Config) -> Path:
     out = processed_dir(cfg)
     out.mkdir(parents=True, exist_ok=True)
     rets.to_parquet(out / "returns.parquet")
+    target_rets.to_parquet(out / "target_returns.parquet")
     graph.to_parquet(out / "graph_panel.parquet")
     row_avail.rename("available").to_frame().to_parquet(out / "graph_avail.parquet")
     controls.to_parquet(out / "controls_pit.parquet")

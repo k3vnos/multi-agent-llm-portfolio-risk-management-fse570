@@ -93,3 +93,42 @@ def filtered_stress_prob(y: pd.Series, fit: MSFit, k: int = 2) -> pd.Series:
         warnings.simplefilter("ignore")
         res = _model(y, k).filter(fit.params)
     return pd.Series(res.filtered_marginal_probabilities[:, fit.stress_regime], index=y.index, name="p_stress")
+
+
+def cached_fit_ms(y: pd.Series, k: int, seed: int, cache_dir, n_starts: int = 20) -> MSFit:
+    """`fit_ms` with an on-disk cache keyed by the exact input series, k, seed and n_starts.
+
+    The same fold-end fits recur across runs and grid configurations (labels do not depend on graph settings), so
+    caching removes repeated multi-start optimisation without changing any result.
+    """
+    import hashlib
+    from pathlib import Path
+
+    y = y.dropna()
+    h = hashlib.sha256()
+    h.update(np.ascontiguousarray(y.to_numpy(float)).tobytes())
+    h.update(np.ascontiguousarray(y.index.asi8).tobytes())
+    h.update(f"k={k}|seed={seed}|n_starts={n_starts}|v1".encode())
+    path = Path(cache_dir) / f"ms_{h.hexdigest()[:20]}.npz"
+    if path.exists():
+        z = np.load(path, allow_pickle=False)
+        sm = pd.Series(z["smoothed"], index=y.index, name="p_stress")
+        return MSFit(z["params"], int(z["stress"]), y.index.max(), list(z["means"]), sm, float(z["llf"]))
+    fit = fit_ms(y, k, seed=seed, n_starts=n_starts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(path, params=fit.params, stress=fit.stress_regime, means=np.array(fit.regime_means),
+             smoothed=fit.smoothed.to_numpy(), llf=fit.llf)
+    return fit
+
+
+def predictive_loglik(y: pd.Series, fit: MSFit, k: int, start: pd.Timestamp, end: pd.Timestamp) -> float:
+    """Per-observation one-step-ahead predictive log-likelihood on (start..end] rows, parameters fixed from `fit`.
+
+    The filter runs over all data <= end; each contribution is log p(y_t | y_<t), so no row uses later data.
+    """
+    y = y.dropna().loc[:end]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = _model(y, k).filter(fit.params)
+    ll = pd.Series(res.llf_obs, index=y.index)
+    return float(ll.loc[start:end].mean())

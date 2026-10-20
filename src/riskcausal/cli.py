@@ -83,6 +83,33 @@ def run(profile: str = "dev", experiment: str = typer.Option(None, help="overlay
     typer.echo(str(run_dir))
 
 
+@app.command("m4-select")
+def m4_select(profile: str = "dev") -> None:
+    """M4: pre-registered validation-only selection (labels, graph grid, target sensitivity). No test data."""
+    from riskcausal.validation.select import run_selection
+
+    run_selection(profile)
+
+
+@app.command()
+def ci(run_dir: str, n_rep: int = 2000, mean_block: float = 63) -> None:
+    """Block-bootstrap and Jeffreys confidence intervals from a run's saved predictions (writes ci.json/ci.md)."""
+    from riskcausal.evaluation.bootstrap import run_cis
+
+    run_cis(run_dir, n_rep=n_rep, mean_block=mean_block)
+    typer.echo(f"{run_dir}/ci.md")
+
+
+@app.command("credit-regimes")
+def credit_regimes_cmd(profile: str = "dev", series: str = "BAA10Y") -> None:
+    """Exploratory B2: descriptive 2-regime Markov on a point-in-time credit spread (no models)."""
+    import json
+
+    from riskcausal.regimes.credit import credit_regimes
+
+    typer.echo(json.dumps(credit_regimes(load_config(profile), series), indent=2))
+
+
 @app.command("diagnose-graphs")
 def diagnose_graphs(profile: str = "dev", n_windows: int = 100, n_boot: int = 3, block: int = 10) -> None:
     """Noise floor for graph instability: change between bootstrap refits of the *same* window vs consecutive

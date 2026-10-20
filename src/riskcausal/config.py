@@ -41,6 +41,7 @@ class RegimeCfg(BaseModel):
     n_regimes: int = 2
     min_calm_days: int = 10
     min_stress_days: int = 5
+    target_series: str | None = None   # exploratory alternative target (e.g. KRE); controls keep regime_series
 
 
 class TargetCfg(BaseModel):
@@ -134,11 +135,12 @@ def load_config(profile: str = "dev", overrides: dict | None = None, config_dir:
     universe = yaml.safe_load((config_dir / "universe.yaml").read_text())
     prof = yaml.safe_load((config_dir / "profiles" / f"{profile}.yaml").read_text())
     merged = _deep_merge(base, prof)
-    if experiment:
-        exp = yaml.safe_load((config_dir / "experiments" / f"{experiment}.yaml").read_text())
-        exp.pop("description", None)
-        merged = _deep_merge(merged, exp)
-        merged["experiment"] = experiment
+    if experiment:                      # comma-separated overlays, applied in order
+        for name in experiment.split(","):
+            exp = yaml.safe_load((config_dir / "experiments" / f"{name}.yaml").read_text())
+            exp.pop("description", None)
+            merged = _deep_merge(merged, exp)
+        merged["experiment"] = experiment.replace(",", "+")
     if overrides:
         merged = _deep_merge(merged, overrides)
     if merged.get("etfs") == "all":

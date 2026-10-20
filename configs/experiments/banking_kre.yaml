@@ -1,0 +1,8 @@
+description: >
+  M4 EXPLORATORY banking-stress target B1 (pre-registered in robustness.yaml): Markov 2-regime on log 21-day
+  realised vol of KRE (regional banks). Same features, models, baselines and onset rules as the primary run; the
+  SPY-volatility target is unchanged elsewhere. Use together with the selected overlay:
+  `--experiment m4_selected,banking_kre`.
+regime:
+  n_regimes: 2
+  target_series: KRE
