@@ -71,5 +71,5 @@ def rolling_varlingam(panel: pd.DataFrame, window: int, step: int, max_lag: int,
         lags.append(p)
         orders.append(order)
     log.info("VarLiNGAM: %d windows fit, %d skipped (incomplete data)", len(ends), skipped)
-    return RollingGraphs(pd.DatetimeIndex(ends), list(panel.columns), np.stack(Bs), np.array(lags),
+    return RollingGraphs(pd.DatetimeIndex(ends).as_unit("ns"), list(panel.columns), np.stack(Bs), np.array(lags),
                          np.stack(orders) if orders else np.zeros((0, k), int))

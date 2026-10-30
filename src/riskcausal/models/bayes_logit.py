@@ -21,9 +21,12 @@ class BayesLogit:
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> BayesLogit:
         import pymc as pm
+        import pytensor
 
         logging.getLogger("pymc").setLevel(logging.ERROR)
-        with pm.Model():
+        # PyTensor's default numba backend gives a different MCMC realisation in a process with a cold compile
+        # cache than in one with a warm cache (found in M5). The C backend ("cvm") is bit-reproducible either way.
+        with pytensor.config.change_flags(linker="cvm"), pm.Model():
             a = pm.Normal("a", 0.0, 2.5)
             b = pm.Normal("b", 0.0, self.prior_sd, shape=X.shape[1])     # features are standardised
             pm.Bernoulli("y", logit_p=a + pm.math.dot(X, b), observed=y)
