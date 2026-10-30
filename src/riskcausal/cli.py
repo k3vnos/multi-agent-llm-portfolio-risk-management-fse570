@@ -38,8 +38,11 @@ def process(profile: str = "dev") -> None:
 
 
 @app.command("fetch-releases")
-def fetch_releases(profile: str = "dev") -> None:
+def fetch_releases(profile: str = "dev", refresh: bool = typer.Option(
+        False, help="Re-download series whose release file already exists (default: keep raw data immutable).")) -> None:
     """Download ALFRED first-release dates for the profile's non-revised daily FRED series (free API key)."""
+    import json
+
     import pandas as pd
 
     from riskcausal.config import fred_api_key
@@ -56,21 +59,25 @@ def fetch_releases(profile: str = "dev") -> None:
     out.mkdir(parents=True, exist_ok=True)
     today = pd.Timestamp.today().strftime("%Y-%m-%d")
     sess = nyse_sessions("1990-01-01", today)
-    summary = {"fetched": today}
+    spath = out / "summary.json"
+    summary = json.loads(spath.read_text()) if spath.exists() else {}
     for sid in cfg.fred_series:
         if cfg.universe["fred"][sid]["revised"]:
+            continue
+        if (out / f"{sid}.parquet").exists() and not refresh:
+            log.info("%s: release file exists, kept unchanged (use --refresh to re-download)", sid)
             continue
         first = download_first_releases(sid, key, int(cfg.start_date[:4]), today)
         first.to_frame().to_parquet(out / f"{sid}.parquet")
         lag = pd.Series(sess.searchsorted(first.values) - sess.searchsorted(first.index), index=first.index)
-        summary[sid] = {"tracked_from_obs": str(first.index.min().date()), "n_tracked": len(first),
+        summary[sid] = {"fetched": today, "tracked_from_obs": str(first.index.min().date()), "n_tracked": len(first),
                         "release_lag_sessions_counts": {str(k): int(v) for k, v in
                                                         lag.clip(upper=5).value_counts().sort_index().items()},
                         "share_released_more_than_1_session_late": float((lag > 1).mean()),
                         "max_release_lag_sessions": int(lag.max())}
         log.info("%s: first releases for %d observations (tracked from %s)", sid, len(first),
                  summary[sid]["tracked_from_obs"])
-    write_json(out / "summary.json", summary)
+    write_json(spath, summary)
 
 
 @app.command()
