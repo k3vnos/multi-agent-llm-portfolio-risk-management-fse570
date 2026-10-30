@@ -64,6 +64,11 @@ runs' recorded git sha therefore does not pin the data-package code they used.
 - **Label-model selection** uses one-step-ahead predictive likelihood with parameters fit ≤ inner_end
   (`::test_predictive_loglik_ignores_data_after_end_and_prefers_true_model`).
 
+## M5 additions (reproducibility, not leakage)
+- Bayesian logit draws depended on PyTensor's numba compile-cache state; fixed by compiling with the C backend
+  (`tests/test_bayes_reproducible.py`, cold vs warm cache in separate processes). No effect on point-in-time logic.
+- Locked M5 run: audit PASSED with 0 violations across 7 checks; bit-identical re-run.
+
 ## Notes
 - **GBM early stopping is disabled**: scikit-learn's early stopping holds out a *random* subset of training rows.
 - **Thresholds** for every method are chosen on the inner validation span (last 2 training years). Two rules are

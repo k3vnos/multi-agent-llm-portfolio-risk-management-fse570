@@ -22,7 +22,7 @@ make test
 | `make verify-data` | M1: downloads every candidate source, writes `data/raw/...` snapshot and regenerates `DATASET_MANIFEST.md` |
 | `.venv/bin/riskcausal verify-data --render-only` | re-render the manifest from the latest saved report |
 | `make dev` | M2 prototype end to end on the dev profile (6 ETFs + 4 indicators): PIT panel → rolling VarLiNGAM/Granger → instability features → fold-local Markov labels → walk-forward Bayesian logit / GBM + VIX, NFCI, rolling-corr VaR baselines → `outputs/runs/<run_id>/` (`metrics.md`, `metrics.json`, `predictions.parquet`, figures) |
-| `.venv/bin/riskcausal fetch-releases --profile dev` | M3: ALFRED first-release dates for the profile's non-revised daily FRED series (free key); required before `process`/`run` for `availability: release` series |
+| `.venv/bin/riskcausal fetch-releases --profile dev` | (existing files are kept; `--refresh` re-downloads) M3: ALFRED first-release dates for the profile's non-revised daily FRED series (free key); required before `process`/`run` for `availability: release` series |
 | `.venv/bin/riskcausal run --profile dev --experiment regimes3` | run with an overlay from `configs/experiments/<name>.yaml` (run id gets the experiment tag) |
 | `.venv/bin/riskcausal diagnose-graphs --profile dev` | bootstrap noise floor for window-to-window graph change (written next to the graph cache) |
 | `.venv/bin/riskcausal m4-select --profile dev` | M4 pre-registered validation-only selection (labels, graph grid, target sensitivity) → `selection.md` + `configs/experiments/m4_selected.yaml` |
@@ -35,6 +35,13 @@ Every run also writes `audit.json`: real-data leakage checks (fold geometry, pre
 timing of every FRED value behind each feature, no back-filled listings). See `LEAKAGE_AUDIT.md`.
 
 More stages are added milestone by milestone (see `PROGRESS.md`).
+
+## Reproducibility
+- Same commit + same raw snapshot → bit-identical predictions, labels, features and metrics (verified for the M5
+  locked run with a cold and a warm PyTensor compile cache). The Bayesian logit compiles with PyTensor's C
+  backend because the numba backend's draws depended on compile-cache state.
+- Across OS upgrades, Apple Accelerate can change floating-point results in the last bit (seen once, ≤ 1.4e-17,
+  ranks unchanged).
 
 ## Ground rules
 - No random splits; chronological walk-forward only. Every feature at time *t* uses only data published by *t*.

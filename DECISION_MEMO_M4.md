@@ -63,3 +63,9 @@ this size between configurations are within noise.
 Option 3, with one locked M5 full-profile run using the M4-selected settings (no new tuning on test), then the
 optional explanation layer framed honestly: the agents explain *what the evidence showed at alert time*
 (VIX/controls, graph changes, date-bounded news), not that the graph gave early warning.
+
+## Addendum — M5 (2026-10-30)
+The one locked full-profile run (`20261030T225627Z_full_c1cccc3aa2_m4_selected`; frozen 13-node graph, frozen M4
+settings, 2014–2026, 21 onsets) confirms the dev-profile conclusion: instability-only models are significantly
+worse than VIX (Bayes −0.283 [−0.437, −0.109], GBM −0.204 [−0.335, −0.060]) and adding instability to the controls
+gives no supported gain (Bayes −0.050 [−0.115, 0.013]). The negative-result framing stands.

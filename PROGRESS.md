@@ -288,3 +288,82 @@ runs record 58253a6 but used 252cc7c / 0ce3cdd, logged in EXPERIMENT_LOG).
 validation-selected config did worse on test than H0 (within noise).
 
 **Next:** see "What remains before the multi-agent system and dashboard" in the M4 summary; M5 needs your go-ahead.
+
+## M5 — Full-profile locked evaluation — 2026-10-30
+**Pre-flight (before running):** configuration frozen (no config change since the M4 overlay 4c12305; selection
+rules committed in 7464cfa before M4 code); selection code reads nothing after each fold's train_end (tested);
+working tree clean, no remote. Node-set conflict (brief said "10-node graph incl. HYG and KRE"; frozen
+`full.yaml` has 10 ETFs incl. HYG, no KRE, + 3 macro = 13 nodes) → team chose the **frozen list**; KRE covered by
+the exploratory banking-stress target. Hardware: Apple M2, 24 GB RAM, 466 GB free.
+
+**Completed:**
+- ALFRED first-release dates for all 7 non-revised daily FRED series of the full profile (HY OAS tracked only
+  from 2023-11; used in no feature). Revised series (NFCI, UNRATE, STLFSI4) use the M1 vintages unchanged.
+- Full panel: 25 ETFs, 13 graph nodes (SPY, IWM, EFA, EEM, XLF, TLT, LQD, HYG, GLD, UUP, ΔVIX, ΔBAA10Y, ΔT10Y2Y);
+  graph rows complete from HYG's listing (2007-04), matching the approved start; W=500 → 882 windows.
+- One locked evaluation with the frozen M4 settings (W=500, edge 0.05, 2 regimes, M3 alert rule), plus a
+  bit-for-bit reproducibility check and the exploratory KRE target as a secondary run.
+
+**Reproducibility problem found and fixed:** the first M5 run and its re-run were *not* bit-identical. Bayesian
+logit draws (instability/combined feature sets only) differed: PyTensor's numba backend produced a different MCMC
+realisation in the first process with a cold compile cache (first run after the macOS 15.7 → 27.0 upgrade) than
+in later processes. Diagnosed step by step (inputs, layout, threads, C cache, numba cache) and confirmed by
+cold/warm experiments. Effect: ROC-AUC ≤ 0.003, no CI or significance call changed. Fix: Bayes compiles with the
+deterministic C backend (8a61dcb) + a cold/warm-cache test (mutation-checked). Both earlier M5 runs are superseded
+and kept. The locked run was then repeated with a cold and a warm cache → **bit-identical**.
+Also: re-fetching release dates once overwrote the dev files — verified harmless (rebuilt M3/M4 features
+identical); `fetch-releases` no longer overwrites. corr_var differs from M4's saved values at ≤ 1.4e-17 after the
+OS upgrade (ranks identical).
+
+**Tests:** `.venv/bin/pytest` → **70 passed** (67 at M4); `ruff check src tests` clean.
+**Leakage audit (locked run):** PASSED, 0 violations — 13 folds, 45,038 prediction placements, 364 thresholds,
+4,400 graph-feature dates, 13,200 FRED-publication checks, 43,980 control values, 25 ETF listings.
+**Resources:** locked run 518 s wall (588 s CPU), peak memory 0.78 GB; graph build 218 s; disk: data 23 MB,
+outputs < 60 MB.
+
+**Actual results — locked M5** (`20261030T225627Z_full_c1cccc3aa2_m4_selected`, test 2014-01-02 → 2026-10-16,
+21 onsets, calm-day base rate 0.103; 95% paired block-bootstrap CIs; event metrics under the M3 rule with
+Jeffreys intervals):
+
+| method | ROC-AUC [95% CI] | PR-AUC | detected (recall 95% CI) | precision |
+|---|---|---|---|---|
+| Bayes — controls | 0.721 [0.628, 0.808] | 0.279 | 14/21 [0.45, 0.84] | 0.34 |
+| VIX level | 0.721 [0.624, 0.807] | 0.293 | 14/21 [0.45, 0.84] | 0.37 |
+| DCC-GARCH VaR | 0.692 [0.598, 0.768] | 0.240 | 14/21 [0.45, 0.84] | 0.41 |
+| Bayes — combined | 0.671 [0.569, 0.769] | 0.224 | 14/21 [0.45, 0.84] | 0.45 |
+| GBM — combined | 0.620 [0.515, 0.720] | 0.178 | 13/21 | 0.35 |
+| GBM — controls | 0.613 [0.514, 0.711] | 0.208 | 13/21 | 0.33 |
+| instability composite | 0.601 [0.467, 0.722] | 0.157 | 3/21 [0.04, 0.33] | 0.27 |
+| Bayes — Granger | 0.543 [0.418, 0.657] | 0.147 | 7/21 | 0.19 |
+| GBM — instability | 0.518 [0.416, 0.624] | 0.114 | 4/21 [0.07, 0.39] | 0.21 |
+| GBM — Granger | 0.517 [0.386, 0.644] | 0.136 | 3/21 | 0.21 |
+| rolling-corr VaR | 0.517 [0.396, 0.633] | 0.106 | 4/21 | 0.50 |
+| NFCI (PIT) | 0.477 [0.359, 0.599] | 0.098 | 9/21 | 0.67 |
+| DCC correlation | 0.466 [0.354, 0.578] | 0.090 | 4/21 | 0.38 |
+| Bayes — instability | 0.438 [0.334, 0.548] | 0.109 | 4/21 [0.07, 0.39] | 0.18 |
+
+Paired ROC-AUC differences [95% CI]: Bayes instability − VIX −0.283 [−0.437, −0.109]; GBM instability − VIX
+−0.204 [−0.335, −0.060]; composite − VIX −0.121 [−0.304, 0.059]; DCC-GARCH VaR − VIX −0.030 [−0.117, 0.046];
+Bayes controls − VIX 0.000 [−0.067, 0.068]. Instability added to controls: Bayes −0.050 [−0.115, 0.013],
+GBM +0.007 [−0.059, 0.083].
+
+**Exploratory banking stress on the full profile** (`20261030T231758Z_full_ff27ad9508_m4_selected+banking_kre`,
+23 onsets): 2023-03-09 (SVB) is an onset; Bayes controls 0.738, VIX 0.736, DCC VaR 0.649, instability-only
+0.59, composite 0.542; combined − controls Bayes −0.057 [−0.130, 0.015]. In the 10 sessions before SVB only DCC
+correlation was alerting (one event; anecdotal).
+
+**What M5 shows:** the dev-profile conclusion generalises to the 25-ETF / 13-node full profile. Directed-
+dependence instability features do not beat VIX (instability-only models significantly worse) and do not add to
+the controls (differences not distinguishable from 0, point estimates negative for Bayes). The composite does
+better here (0.601) than on dev (0.403) but is not distinguishable from VIX and detects 3 of 21 onsets.
+With the 25-ETF covariance, DCC-GARCH VaR becomes competitive with VIX (−0.030, CI includes 0).
+
+**Limitations:** test span 2014–2026 only (W=500 + HYG listing push the first test fold to 2014), 21 onsets;
+event-level intervals wide; NFCI vintages from 2011-05; FRED release dates untracked before 2014 (3-session
+fallback); results conditional on SPY-volatility Markov labels (retrospective truth); one dataset/period;
+VarLiNGAM assumptions (linearity, non-Gaussian independent shocks, no hidden confounders) are not tested here.
+
+**Dashboard dataset:** M5 locked run passes all audits and the reproducibility check → primary dashboard
+dataset (M4 dev run kept as reference).
+
+**Next:** local LLM install (approved; hardware check passed), minimal FNSPID subset (size check first), M6.
