@@ -117,6 +117,34 @@ def credit_regimes_cmd(profile: str = "dev", series: str = "BAA10Y") -> None:
     typer.echo(json.dumps(credit_regimes(load_config(profile), series), indent=2))
 
 
+@app.command("news-subset")
+def news_subset(run_dir: str, path: str = "Stock_news/All_external.csv", lookback_days: int = 7) -> None:
+    """Stream one FNSPID file once and keep only articles in evidence windows of a run (free public data)."""
+    import time
+    from pathlib import Path
+
+    from riskcausal.config import PROJECT_ROOT
+    from riskcausal.data.ingest_fnspid import evidence_dates, news_windows, stream_subset
+    from riskcausal.registry import write_json
+
+    dates = evidence_dates(run_dir)
+    windows = news_windows(dates, lookback_days)
+    out = PROJECT_ROOT / "data" / "raw" / "fnspid" / Path(run_dir).name
+    out.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    res = stream_subset(path, windows)
+    rows = res.pop("rows")
+    rows.to_parquet(out / "news_subset.parquet")
+    write_json(out / "manifest.json", {
+        "source": f"huggingface.co/datasets/Zihan1004/FNSPID/{path}", "run_dir": str(run_dir),
+        "n_evidence_dates": len(dates), "lookback_days": lookback_days,
+        "evidence_dates_span": [str(dates.min().date()), str(dates.max().date())],
+        "n_rows_kept": len(rows), "stream_secs": round(time.time() - t0, 1), **res,
+        "columns_kept": list(rows.columns), "point_in_time_rule": "enforced at retrieval: published_utc <= "
+        "16:00 America/New_York on the decision date"})
+    log.info("kept %d of %d rows (%s bytes streamed) -> %s", len(rows), res["n_rows_total"], res["bytes"], out)
+
+
 @app.command("diagnose-graphs")
 def diagnose_graphs(profile: str = "dev", n_windows: int = 100, n_boot: int = 3, block: int = 10) -> None:
     """Noise floor for graph instability: change between bootstrap refits of the *same* window vs consecutive
