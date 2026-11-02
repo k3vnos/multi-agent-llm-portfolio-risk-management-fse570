@@ -1,0 +1,10 @@
+# M7 read-only dashboard: which saved runs are shown, in which role. Changing this file never changes results.
+runs:
+  primary: 20261030T225627Z_full_c1cccc3aa2_m4_selected          # M5 locked run (audit passed)
+  primary_twin: 20261030T230738Z_full_c1cccc3aa2_m4_selected     # bit-identical re-run (reproducibility check)
+  reference: 20261020T071838Z_dev_89c4b14759_m4_selected         # M4 dev locked run
+  exploratory: 20261030T231758Z_full_ff27ad9508_m4_selected+banking_kre   # KRE banking-stress target
+explained_method: "bayes_logit:combined"
+headline_methods: ["vix", "bayes_logit:controls", "bayes_logit:combined", "dcc_var", "inst_composite"]
+api: {host: 127.0.0.1, port: 8000}
+dashboard: {host: 127.0.0.1, port: 8501}

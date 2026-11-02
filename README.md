@@ -46,6 +46,17 @@ More stages are added milestone by milestone (see `PROGRESS.md`).
 Requires `ollama serve` bound to 127.0.0.1 and `ollama pull qwen2.5:7b`. Explanations are illustrative and never
 change predictions or metrics.
 
+## Read-only dashboard (M7, local only)
+```bash
+.venv/bin/uvicorn riskcausal_api.main:app --host 127.0.0.1 --port 8000          # read-only API
+RISKCAUSAL_API_URL=http://127.0.0.1:8000 .venv/bin/streamlit run dashboard/app.py   # http://127.0.0.1:8501
+```
+Without `RISKCAUSAL_API_URL` the dashboard uses the same read-only API in-process. Primary dataset: the M5 locked
+run (`configs/dashboard.yaml`). Streamlit telemetry is off and both servers bind 127.0.0.1 (`.streamlit/config.toml`).
+Pages: overview, stress timeline, model comparison (CIs), graph snapshot (estimated directed dependence), alert
+explorer (point-in-time evidence with deterministic descriptions; LLM drafts collapsed, labelled unverified,
+flagged or suppressed), exploratory KRE banking stress.
+
 ## Reproducibility
 - Same commit + same raw snapshot → bit-identical predictions, labels, features and metrics (verified for the M5
   locked run with a cold and a warm PyTensor compile cache). The Bayesian logit compiles with PyTensor's C

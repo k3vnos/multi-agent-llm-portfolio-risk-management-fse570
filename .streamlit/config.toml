@@ -1,0 +1,16 @@
+# Local-only, no telemetry (COST_POLICY.md). Streamlit's defaults would send usage statistics and listen on all
+# interfaces; both are overridden here and checked by tests/dashboard.
+[browser]
+gatherUsageStats = false
+
+[server]
+address = "127.0.0.1"
+port = 8501
+headless = true
+enableCORS = true
+
+[theme]
+base = "light"
+
+[client]
+toolbarMode = "minimal"     # hides the "Deploy" (Streamlit Community Cloud) button: nothing is deployed

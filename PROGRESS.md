@@ -412,3 +412,31 @@ never reached a final explanation (retrieval surfaced mostly generic price-check
 faithfulness — recommended: evidence-first view (deterministic, always correct) with the LLM summary labelled
 "unverified draft"; optional: try `qwen2.5:14b` (~9 GB download, needs approval) on a new held-out set;
 (3) approve M7 per `M7_PLAN.md`.
+
+## M7 — Read-only local API + dashboard — 2026-11-02
+**Completed (per M7_PLAN.md and the team's conditions):**
+- `src/riskcausal_api` (FastAPI, GET routes only, 127.0.0.1): runs, metrics + CIs, timeline, alert episodes, graph
+  snapshot, point-in-time evidence, LLM drafts. Every response carries `kind` (`research_result` / `evidence` /
+  `illustrative` / `unverified_draft`), run id, git sha, audit status; synthetic runs are refused as results.
+  Reproducibility of the primary run is shown by hashing it against its re-run (computed live; nothing written).
+- `describe.py`: deterministic descriptions for Baa spread (low = benign credit-risk pricing), VIX level vs 5-day
+  change, NFCI sign, 10y–2y level (no trend claims), edge direction (A → B = estimated effect of A on B),
+  appeared / disappeared / sign flipped / strengthened / weakened at the run's edge threshold.
+- `dashboard/app.py` (Streamlit, 127.0.0.1, telemetry off, no Deploy button): Overview, Stress timeline, Model
+  comparison, Graph snapshot, Alert explorer, Exploratory banking stress. Primary dataset = M5 locked run. LLM
+  drafts are collapsed, labelled "UNVERIFIED LLM DRAFT", flagged with hand-check findings, or suppressed when no
+  claim passed validation; the deterministic evidence is the primary explanation.
+- Charts follow the dataviz procedure (reference palette validated; aqua contrast warning → every chart has a
+  table view); rendered and inspected in a local browser; fixed: clipped stacked charts, unlabelled categorical
+  axes, raw CI floats, non-diverging heatmap interpolation.
+- No research result, model, threshold or held-out evaluation was changed.
+
+**Tests:** `.venv/bin/pytest` → **120 passed** (95 at M6), incl. 25 M7 integration tests (API values equal the M5
+`metrics.json` / `ci.json` / `predictions.parquet` / graph cache exactly; GET-only, local-only, no pipeline or LLM
+imports; drafts labelled/flagged/suppressed; every dashboard page renders; headline numbers 0.721 / 0.438 / −0.050
+shown; telemetry off); `ruff check src tests dashboard` clean.
+
+**Run it:** see README "Read-only dashboard".
+**Limitations:** LLM drafts exist only for the 24 evaluated alerts; the noise-floor caveat on the graph page is
+from the dev profile; the reference run's recorded git sha (58253a6) differs from the code it used (252cc7c), as
+logged in EXPERIMENT_LOG.

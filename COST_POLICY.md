@@ -44,7 +44,7 @@ Every component is checked to be free for this use **before** installation/conne
 | Ollama 0.40.13 (Homebrew core formula, MIT) | Free, local | 2026-10-30 — installed with team approval | no background service registered; started manually, listening on 127.0.0.1:11434 only (verified with lsof) |
 | qwen2.5:7b (Q4_K_M, 7.6B, digest 845dbda0ea48) | Free, Apache-2.0 | 2026-10-30 — pulled with team approval | 4.4 GB disk; ~35 tokens/s on the M2; used only by the optional explanation layer |
 | FNSPID `Stock_news/All_external.csv` (streamed once) | Free public dataset | 2026-11-01 — team approved streaming the 5.7 GB file | not stored whole: 5.73 GB streamed and filtered on the fly (SHA256 recorded); 82 MB subset kept |
-| FastAPI / uvicorn / Streamlit (local) | Free, open source | optional extras | localhost only; never a hosted service |
+| FastAPI 0.162 (MIT), uvicorn 0.54 / httpx 0.28 (BSD-3), Streamlit 1.66 (Apache-2.0), Altair 6.3 (BSD-3) | Free, open source | 2026-11-02 — installed (team approved M7) | both servers bind 127.0.0.1 (verified with lsof); Streamlit usage statistics disabled and "Deploy" button hidden (`.streamlit/config.toml`, tested); never a hosted service |
 
 ## 5. Defaults that enforce this policy
 - `configs/base.yaml`: `agents.enabled: false`, `agents.backend: disabled`, `api.host: 127.0.0.1`, `deploy: none`.
