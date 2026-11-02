@@ -36,6 +36,16 @@ timing of every FRED value behind each feature, no back-filled listings). See `L
 
 More stages are added milestone by milestone (see `PROGRESS.md`).
 
+## Optional explanation layer (local LLM, M6)
+| Command | What it does |
+|---|---|
+| `.venv/bin/riskcausal news-subset <run_dir>` | stream FNSPID `All_external.csv` once and keep only articles in the run's evidence windows (coverage ends 2020-06-11) |
+| `.venv/bin/python -m riskcausal_agents.cli explain-one <run_dir> <date> --backend ollama` | explain one saved alert with the local model (default backend is `disabled`) |
+| `.venv/bin/python -m riskcausal_agents.cli eval-set <run_dir> --backend ollama [--seed 571 --name heldout --exclude-from …]` | pre-specified stratified evaluation set → `explanations/<name>/eval_set.csv` (rubric: `M6_EVAL_RUBRIC.md`) |
+
+Requires `ollama serve` bound to 127.0.0.1 and `ollama pull qwen2.5:7b`. Explanations are illustrative and never
+change predictions or metrics.
+
 ## Reproducibility
 - Same commit + same raw snapshot → bit-identical predictions, labels, features and metrics (verified for the M5
   locked run with a cold and a warm PyTensor compile cache). The Bayesian logit compiles with PyTensor's C

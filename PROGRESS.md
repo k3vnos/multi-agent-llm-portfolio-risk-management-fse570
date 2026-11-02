@@ -367,3 +367,48 @@ VarLiNGAM assumptions (linearity, non-Gaussian independent shocks, no hidden con
 dataset (M4 dev run kept as reference).
 
 **Next:** local LLM install (approved; hardware check passed), minimal FNSPID subset (size check first), M6.
+
+## M6 — Grounded multi-agent explanations (local LLM) — 2026-11-01
+**Completed:**
+- Local LLM: Ollama 0.40.13 (Homebrew, MIT) + qwen2.5:7b (Apache-2.0, Q4_K_M, digest 845dbda0…, 4.4 GB), server on
+  127.0.0.1:11434 only; ~35 tokens/s. No service registered; started manually.
+- News: FNSPID `All_external.csv` streamed once and filtered on the fly to the M5 run's 188 evidence windows
+  (alert-episode starts of the explained methods + stress onsets, 7-day lookback). **Full-scan coverage ends
+  2020-06-11 13:12 UTC**, so alerts after that have no news; the news agent then abstains and the coverage gap
+  is stated — missing news is never treated as neutral.
+- `riskcausal_agents` (optional, separate package; the core cannot import it): point-in-time evidence bundles
+  (alert score vs threshold, PIT macro values with percentiles, graph changes as *estimated directed dependence*,
+  news published ≤ 16:00 New York on the decision date); news / macro / graph specialists + synthesis agent;
+  deterministic validator (citation ids, numbers, names/hindsight guard, causal/superiority/forecast language,
+  future dates, uncertainty text); deterministic abstention (no evidence → no model call; < 2 validated claims →
+  synthesis abstains). Retrospective evaluation results are never citable; they appear only in a labelled
+  "method reliability (retrospective)" block.
+- Evaluation: rubric `M6_EVAL_RUBRIC.md` (pass bar set before running); pre-specified stratified sets
+  (news coverage × true alert / false alarm, 3 per stratum).
+
+**Tests:** `.venv/bin/pytest` → **95 passed** (70 at M5), incl. 25 evidence-validation tests (DST-aware cutoff,
+lookback, missing coverage is explicit, every rejection rule, safe id normalisation, negation-aware language,
+local-only backends, real-bundle point-in-time check); `ruff check src tests` clean.
+
+**Actual results (first-pass hand check by Claude — pending team review):**
+| set | prompt | faithful claims (R2) | hindsight-free (R3) | forbidden claims shown (R4) | uncertainty (R5) | abstention (R6) |
+|---|---|---|---|---|---|---|
+| v1 (seed 570) | m6-v1 | — (all 12 abstained: id-format bug) | — | — | — | — |
+| tuning (seed 570) | m6-v2 | 8/12 (67%) | 12/12 | 0 | 5/12 | 8/12 |
+| **held-out (seed 571)** | m6-v3 | **24/33 (73%)** | **12/12** | **0** | 7/12 | 10/12 |
+
+What this shows: the guardrails work — no hindsight, no forbidden claim and no uncited or non-point-in-time
+evidence reached an explanation, and the news agent abstains after the coverage end. But **semantic faithfulness
+of the 7B local model is below the pre-set 90% bar**: it misreads qualitative meaning (a low credit spread called
+"high credit risk", a sign flip called "weakened", a VIX *change* called high volatility, coefficients called
+"correlations"). The validator cannot catch these because the numbers and names are correct. News evidence
+never reached a final explanation (retrieval surfaced mostly generic price-check headlines).
+
+**Limitations:** single checker (Claude, first pass); 12 + 12 alerts; one local 7B model; FNSPID ends
+2020-06-11; news ranking is lexical.
+
+**Decisions needed before M7:** (1) team review of the hand-check sheets
+(`<run>/explanations/{eval,heldout}/eval_set.csv`); (2) how the dashboard presents explanations given 73%
+faithfulness — recommended: evidence-first view (deterministic, always correct) with the LLM summary labelled
+"unverified draft"; optional: try `qwen2.5:14b` (~9 GB download, needs approval) on a new held-out set;
+(3) approve M7 per `M7_PLAN.md`.
