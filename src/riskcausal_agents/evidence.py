@@ -129,8 +129,10 @@ class RunEvidence:
         r = row.iloc[0]
         rule = self.metrics["primary_rule"]
         return Evidence(f"alert:{method}@{t.date()}", "alert", str(t.date()),
-                        f"{method} score {r['score']:.3f} vs threshold {r['threshold']:.3f} (rule {rule}, fold "
-                        f"{int(r['fold'])}) at the close of {t.date()}: alert={'yes' if r['alert'] else 'no'}",
+                        f"at the close of {t.date()} the {method} score was {r['score']:.3f}, "
+                        f"{'ABOVE' if r['alert'] else 'NOT above'} its threshold of {r['threshold']:.3f} "
+                        f"(chosen on validation data, rule {rule}), so an alert was "
+                        f"{'issued' if r['alert'] else 'not issued'}",
                         {"score": float(r["score"]), "threshold": float(r["threshold"])})
 
     def _macro(self, t: pd.Timestamp) -> list[Evidence]:

@@ -67,10 +67,23 @@ def _num_ok(x: float, pool: list[float]) -> bool:
                for y in pool)
 
 
+def normalise_id(raw: str, allowed: dict[str, Evidence]) -> str:
+    """Strip formatting the model adds around ids ([...], quotes, spaces); restore a dropped "kind:" prefix only
+    when exactly one allowed id ends with the given text. Anything else stays as written (and will be rejected)."""
+    x = str(raw).strip().strip("[]()\"'` ").strip()
+    if x in allowed:
+        return x
+    hits = [k for k in allowed if k.endswith(":" + x)]
+    return hits[0] if len(hits) == 1 else x
+
+
 def validate_claim(claim: dict, allowed: dict[str, Evidence], decision_date: str) -> list[str]:
     reasons = []
     text = str(claim.get("text", "")).strip()
     ids = claim.get("evidence_ids") or []
+    if isinstance(ids, list):
+        ids = [normalise_id(i, allowed) for i in ids]
+        claim["evidence_ids"] = ids
     if not text or len(text.split()) > MAX_WORDS:
         reasons.append("schema: empty or too long")
     if not isinstance(ids, list) or not ids:
@@ -106,8 +119,14 @@ def validate_output(out: dict, allowed: dict[str, Evidence], decision_date: str)
         c = c if isinstance(c, dict) else {"text": str(c)}
         r = validate_claim(c, allowed, decision_date)
         (rejected if r else kept).append({**c, **({"reasons": r} if r else {})})
+    unc = str(out.get("uncertainty", ""))[:400]
+    unc_bad = [why for pat, why in FORBIDDEN if re.search(pat, unc, flags=re.IGNORECASE)]
+    ev_text = " ".join(e.text for e in allowed.values()).lower()
+    unc_bad += [f"name {n!r} not in evidence" for n in NAME.findall(unc)
+                if n not in COMMON_CAPS and n.lower() not in ev_text]
     return {"claims": kept, "rejected": rejected, "abstain": bool(out.get("abstain")) and not kept,
-            "abstain_reason": out.get("abstain_reason", ""), "uncertainty": str(out.get("uncertainty", ""))[:400]}
+            "abstain_reason": out.get("abstain_reason", ""), "uncertainty": "" if unc_bad else unc,
+            **({"uncertainty_rejected": {"text": unc, "reasons": unc_bad}} if unc_bad else {})}
 
 
 def allowed_for(bundle: Bundle, kinds: set[str]) -> dict[str, Evidence]:

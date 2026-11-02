@@ -18,7 +18,7 @@ document in the repo (including `IMPLEMENTATION_PLAN.md`).
 ## 2. LLM agents are free and local
 - The optional explanation agents use a **local** open-weight model served by **Ollama** on this Mac.
 - Ollama is installed and models are pulled **only with explicit team approval** (multi-GB downloads).
-- Until then the agents run with `DisabledBackend` (`agents.enabled: false`): interfaces, prompts, retrieval,
+- The default is still `DisabledBackend`; the local model is used only when `--backend ollama` is passed (`agents.enabled: false`): interfaces, prompts, retrieval,
   validation and tests exist, but no model is called.
 - The Ollama backend refuses any host that is not `localhost` / `127.0.0.1` / `::1`. There is **no fallback**
   to any other provider: if the local model is unavailable, the agent step fails with a clear error.
@@ -41,7 +41,9 @@ Every component is checked to be free for this use **before** installation/conne
 | FRED / ALFRED API | Free | 2026-10-18 | requires a **free** API key from fred.stlouisfed.org (no billing); stored in `.env` |
 | FNSPID on Hugging Face | Free public dataset | checked in M1 | public download; disk space only |
 | GDELT | Free public data | optional, checked in M1 | |
-| Ollama + open-weight model | Free, local | **not installed — needs approval** | model licences (Llama/Qwen community licences) to be recorded here |
+| Ollama 0.40.13 (Homebrew core formula, MIT) | Free, local | 2026-10-30 — installed with team approval | no background service registered; started manually, listening on 127.0.0.1:11434 only (verified with lsof) |
+| qwen2.5:7b (Q4_K_M, 7.6B, digest 845dbda0ea48) | Free, Apache-2.0 | 2026-10-30 — pulled with team approval | 4.4 GB disk; ~35 tokens/s on the M2; used only by the optional explanation layer |
+| FNSPID `Stock_news/All_external.csv` (streamed once) | Free public dataset | 2026-11-01 — team approved streaming the 5.7 GB file | not stored whole: 5.73 GB streamed and filtered on the fly (SHA256 recorded); 82 MB subset kept |
 | FastAPI / uvicorn / Streamlit (local) | Free, open source | optional extras | localhost only; never a hosted service |
 
 ## 5. Defaults that enforce this policy

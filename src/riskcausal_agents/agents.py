@@ -17,11 +17,12 @@ from riskcausal_agents.evidence import Bundle, Evidence
 from riskcausal_agents.validator import allowed_for, validate_output
 
 MIN_CLAIMS_FOR_SYNTHESIS = 2
-PROMPT_VERSION = "m6-v1"
+PROMPT_VERSION = "m6-v2"
 
 RULES = """Rules (all mandatory):
 - Use ONLY the evidence items listed below. Do not use any other knowledge, including what happened later.
-- Every claim must cite one or more evidence ids from the list, exactly as written.
+- Every claim must cite one or more evidence ids from the list, copied exactly, e.g. "macro:VIXCLS@2020-02-21"
+  (no brackets, no shortening).
 - Copy numbers exactly as they appear in the cited evidence. Do not compute new numbers.
 - Do not name any event, company, person or institution that is not written in the cited evidence.
 - Describe, do not explain causes: never say something caused, drove, led to or was due to something else.
@@ -42,7 +43,7 @@ ROLES = {
 
 
 def _evidence_block(items: list[Evidence]) -> str:
-    return "\n".join(f"[{e.id}] {e.text}" for e in items)
+    return "\n".join(f"- id: {e.id}\n  fact: {e.text}" for e in items)
 
 
 def run_specialist(role: str, bundle: Bundle, backend: LLMBackend) -> dict:

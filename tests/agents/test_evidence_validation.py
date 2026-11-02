@@ -187,3 +187,21 @@ def test_real_bundle_is_point_in_time_and_has_no_labels_or_results():
             if e.id.startswith("edge:") or e.id.startswith("graph:"):
                 assert pd.Timestamp(e.id.split("@")[1]) < t
         assert b.reliability and all(r.startswith("[retrospective") for r in b.reliability)
+
+
+def test_citation_normalisation_is_safe():
+    from riskcausal_agents.validator import normalise_id
+
+    assert normalise_id("[macro:VIXCLS@2020-02-21]", EV) == "macro:VIXCLS@2020-02-21"
+    assert normalise_id("abc", EV) == "news:abc"                      # unique suffix -> restored
+    assert normalise_id("VIXCLS@2020-02-21", EV) == "macro:VIXCLS@2020-02-21"
+    assert normalise_id("xyz", EV) == "xyz"                           # unknown stays unknown (rejected later)
+    assert _claim("VIX stood at 15.56.", ["[macro:VIXCLS@2020-02-21]"]) == []
+
+
+def test_uncertainty_text_is_checked_too():
+    v = validate_output({"claims": [], "uncertainty": "Volatility will rise after the Fed meeting."}, EV, "2020-02-21")
+    assert v["uncertainty"] == "" and v["uncertainty_rejected"]["reasons"]
+    v = validate_output({"claims": [], "uncertainty": "The evidence does not show whether stress followed."},
+                        EV, "2020-02-21")
+    assert v["uncertainty"].startswith("The evidence")
