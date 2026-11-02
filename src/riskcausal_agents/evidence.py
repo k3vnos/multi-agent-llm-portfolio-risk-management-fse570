@@ -58,6 +58,23 @@ def decision_cutoff_utc(date: pd.Timestamp) -> pd.Timestamp:
     return pd.Timestamp(pd.Timestamp(date).date()).tz_localize(NY).replace(hour=16).tz_convert("UTC")
 
 
+def _pct_words(p: float | None) -> str:
+    if p is None:
+        return ""
+    label = "low" if p < 20 else "high" if p > 80 else "typical"
+    return f"; {p:.0f}th percentile of the previous 5 years ({label})"
+
+
+def _change_words(before: float, after: float) -> str:
+    if abs(before) < 0.01 and abs(after) >= 0.01:
+        return "edge appeared"
+    if abs(after) < 0.01 and abs(before) >= 0.01:
+        return "edge disappeared"
+    if before * after < 0:
+        return "sign flipped"
+    return "larger in magnitude" if abs(after) > abs(before) else "smaller in magnitude"
+
+
 def _pct(series: pd.Series, t: pd.Timestamp, years: int = 5) -> float | None:
     """Empirical percentile of the value at t within the trailing `years` of values known up to t."""
     hist = series.loc[t - pd.DateOffset(years=years):t].dropna()
@@ -146,7 +163,7 @@ class RunEvidence:
             p = _pct(self.C[sid], t)
             out.append(Evidence(f"macro:{sid}@{t.date()}", "macro", str(t.date()),
                                 f"{label} = {v:.{nd}f} (observation dated {obs.date()}, usable by {t.date()})"
-                                + (f"; {p:.0f}th percentile of the previous 5 years" if p is not None else ""),
+                                + _pct_words(p),
                                 {"value": round(v, nd), **({"pct": round(p)} if p is not None else {})}))
         for col, label, nd, scale in [("rv21", "SPY 21-day realised volatility, annualised %", 1, 100),
                                       ("vix_chg_5d", "5-day change in VIX, points", 2, 1),
@@ -155,8 +172,7 @@ class RunEvidence:
                 v = float(self.F[col].loc[t]) * scale
                 p = _pct(self.F[col], t)
                 out.append(Evidence(f"macro:{col}@{t.date()}", "macro", str(t.date()),
-                                    f"{label} = {v:.{nd}f}" + (f"; {p:.0f}th percentile of the previous 5 years"
-                                                                if p is not None else ""),
+                                    f"{label} = {v:.{nd}f}" + _pct_words(p),
                                     {"value": round(v, nd), **({"pct": round(p)} if p is not None else {})}))
         return out
 
@@ -173,7 +189,7 @@ class RunEvidence:
                 v, p = float(self.F[col].loc[t]), _pct(self.F[col], t)
                 out.append(Evidence(f"graph:{col}@{we.date()}", "graph", str(t.date()),
                                     f"estimated directed dependence (VarLiNGAM, window ending {we.date()}): {label} = "
-                                    f"{v:.2f}" + (f"; {p:.0f}th percentile of the previous 5 years" if p is not None else ""),
+                                    f"{v:.2f}" + _pct_words(p),
                                     {"value": round(v, 2), **({"pct": round(p)} if p is not None else {})}))
         w = self.g_ends.get_loc(we)
         if w > 0:
@@ -182,10 +198,12 @@ class RunEvidence:
                 if abs(d[i, j]) < 0.01:
                     continue
                 src, dst = self.g_nodes[j], self.g_nodes[i]
+                b0, b1 = float(self.g_B[w - 1, 0][i, j]), float(self.g_B[w, 0][i, j])
                 out.append(Evidence(f"edge:{src}->{dst}@{we.date()}", "graph", str(t.date()),
-                                    f"estimated directed-dependence coefficient {src} -> {dst} changed from "
-                                    f"{self.g_B[w - 1, 0][i, j]:.2f} to {self.g_B[w, 0][i, j]:.2f} between windows "
-                                    f"ending {self.g_ends[w - 1].date()} and {we.date()} (an estimate, not causality)",
+                                    f"estimated effect of {src} on {dst} ({src} -> {dst}) in the directed-dependence "
+                                    f"graph changed from {b0:.2f} to {b1:.2f} between windows ending "
+                                    f"{self.g_ends[w - 1].date()} and {we.date()}: {_change_words(b0, b1)} "
+                                    "(a statistical estimate, not causality)",
                                     {"before": round(float(self.g_B[w - 1, 0][i, j]), 2),
                                      "after": round(float(self.g_B[w, 0][i, j]), 2)}))
         return out

@@ -17,13 +17,15 @@ from riskcausal_agents.evidence import Bundle, Evidence
 from riskcausal_agents.validator import allowed_for, validate_output
 
 MIN_CLAIMS_FOR_SYNTHESIS = 2
-PROMPT_VERSION = "m6-v2"
+PROMPT_VERSION = "m6-v3"
 
 RULES = """Rules (all mandatory):
 - Use ONLY the evidence items listed below. Do not use any other knowledge, including what happened later.
 - Every claim must cite one or more evidence ids from the list, copied exactly, e.g. "macro:VIXCLS@2020-02-21"
   (no brackets, no shortening).
 - Copy numbers exactly as they appear in the cited evidence. Do not compute new numbers.
+- Copy qualitative words from the evidence (low/typical/high, larger/smaller, appeared/disappeared). An arrow
+  "A -> B" means the estimated effect of A on B; never reverse it.
 - Do not name any event, company, person or institution that is not written in the cited evidence.
 - Describe, do not explain causes: never say something caused, drove, led to or was due to something else.
 - Graph items are ESTIMATED DIRECTED DEPENDENCE from a statistical model, not causal effects.
@@ -72,8 +74,9 @@ def run_synthesis(bundle: Bundle, specialists: list[dict], backend: LLMBackend) 
     findings = "\n".join(f"- ({s['role']}) {c['text']} {c['evidence_ids']}" for s in specialists for c in s["claims"])
     abst = "\n".join(f"- ({s['role']}) abstained: {s['abstain_reason']}" for s in specialists if s["abstain"])
     system = ("You are the synthesis analyst. Combine the specialists' validated findings into a short, neutral "
-              "explanation of what the evidence showed when the alert was issued. Mention which evidence is "
-              f"missing. 2 to 4 claims.\n{RULES}")
+              "explanation of what the evidence showed when the alert was issued. Write 2 to 4 claims, each "
+              "about one kind of evidence (alert score, market indicators, graph changes, news). Mention which "
+              f"evidence is missing in 'uncertainty'.\n{RULES}")
     prompt = (f"Decision date: {bundle.date}. Alerting method: {bundle.method}.\nValidated findings:\n{findings}\n"
               f"{abst}\nCoverage notes:\n" + "\n".join(f"- {n}" for n in bundle.notes) +
               f"\nEvidence you may cite:\n{_evidence_block(list(allowed.values()))}")

@@ -38,7 +38,36 @@ COMMON_CAPS = {"The", "This", "These", "That", "There", "In", "On", "At", "As", 
                "Market", "Markets", "Stress", "Volatility", "Index", "Level", "Percentile", "Window", "Edge",
                "Edges", "Coefficient", "Spread", "Treasury", "Yield", "Change", "Changes", "Recent", "Data",
                "UTC", "ROC", "AUC", "Insufficient", "Article", "Articles", "Headline", "Headlines", "Multiple", "Some", "One", "Two", "Three", "Four", "Five", "Price", "Prices", "Stocks", "Stock",
-               "Shares", "Ticker", "Publisher", "Close", "Previous", "Year", "Years", "Days", "Week", "Weeks"}
+               "Shares", "Ticker", "Publisher", "Close", "Previous", "Year", "Years", "Days", "Week", "Weeks",
+               "Global", "Missing", "Overall", "Higher", "Lower", "Low", "High", "Typical", "Bayes", "Logit"}
+
+
+NEGATION = re.compile(r"\b(not|no|nor|never|without|cannot|n't)\b[^.;]{0,40}$", re.IGNORECASE)
+
+
+def forbidden_hits(text: str) -> list[str]:
+    """Forbidden-language matches, ignoring ones inside a negation ("does not show causal effects")."""
+    hits = []
+    for pat, why in FORBIDDEN:
+        for m in re.finditer(pat, text, flags=re.IGNORECASE):
+            if not NEGATION.search(text[:m.start()]):
+                hits.append(why)
+                break
+    return hits
+
+
+def names_in(text: str) -> set[str]:
+    """Capitalised terms/acronyms, skipping the first word of each sentence and generic words."""
+    out = set()
+    for sent in re.split(r"(?<=[.!?;:])\s+", text.strip()):
+        words = sent.split()
+        rest = " ".join(words[1:]) if words else ""
+        first = words[0].strip(",()\"'") if words else ""
+        found = set(NAME.findall(rest))
+        if first.isupper() and len(first) >= 2:            # an acronym at sentence start still counts
+            found.add(first)
+        out |= {n for n in found if n not in COMMON_CAPS}
+    return out
 
 
 def _numbers(text: str) -> list[float]:
@@ -99,13 +128,12 @@ def validate_claim(claim: dict, allowed: dict[str, Evidence], decision_date: str
         if bad:
             reasons.append(f"numbers: {bad} not found in cited evidence")
         ev_text = " ".join(e.text for e in cited).lower() + " " + " ".join(ids).lower()
-        names = {n for n in NAME.findall(text) if n not in COMMON_CAPS}
+        names = names_in(text)
         missing = sorted(n for n in names if n.lower() not in ev_text)
         if missing:
             reasons.append(f"names: {missing} not mentioned in cited evidence (possible hindsight)")
-    for pat, why in FORBIDDEN:
-        if re.search(pat, text, flags=re.IGNORECASE):
-            reasons.append(f"language: {why}")
+    for why in forbidden_hits(text):
+        reasons.append(f"language: {why}")
     for m in re.finditer(r"\b(19|20)\d{2}-\d{2}-\d{2}\b", text):
         if pd.Timestamp(m.group(0)) > pd.Timestamp(decision_date):
             reasons.append(f"dates: {m.group(0)} is after the decision date {decision_date}")
@@ -120,10 +148,9 @@ def validate_output(out: dict, allowed: dict[str, Evidence], decision_date: str)
         r = validate_claim(c, allowed, decision_date)
         (rejected if r else kept).append({**c, **({"reasons": r} if r else {})})
     unc = str(out.get("uncertainty", ""))[:400]
-    unc_bad = [why for pat, why in FORBIDDEN if re.search(pat, unc, flags=re.IGNORECASE)]
+    unc_bad = forbidden_hits(unc)
     ev_text = " ".join(e.text for e in allowed.values()).lower()
-    unc_bad += [f"name {n!r} not in evidence" for n in NAME.findall(unc)
-                if n not in COMMON_CAPS and n.lower() not in ev_text]
+    unc_bad += [f"name {n!r} not in evidence" for n in sorted(names_in(unc)) if n.lower() not in ev_text]
     return {"claims": kept, "rejected": rejected, "abstain": bool(out.get("abstain")) and not kept,
             "abstain_reason": out.get("abstain_reason", ""), "uncertainty": "" if unc_bad else unc,
             **({"uncertainty_rejected": {"text": unc, "reasons": unc_bad}} if unc_bad else {})}

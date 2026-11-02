@@ -37,7 +37,8 @@ def _backend(backend: str, model: str):
     return DisabledBackend(), None
 
 
-def select_eval_set(run_dir: Path, news_end: pd.Timestamp | None, seed: int = 570) -> pd.DataFrame:
+def select_eval_set(run_dir: Path, news_end: pd.Timestamp | None, seed: int = 570,
+                    exclude: set[str] | None = None) -> pd.DataFrame:
     """Pre-specified stratified sample of alert episodes of the explained method: news coverage (yes/no) x
     retrospective outcome (true alert / false alarm). Labels are used ONLY for stratification and scoring."""
     from riskcausal.evaluation.metrics import alert_episodes
@@ -62,6 +63,8 @@ def select_eval_set(run_dir: Path, news_end: pd.Timestamp | None, seed: int = 57
         covered = news_end is not None and cutoff <= news_end
         rows.append({"date": dates[s], "outcome": outcome, "news_covered": covered})
     ep = pd.DataFrame(rows)
+    if exclude:
+        ep = ep[~ep["date"].dt.strftime("%Y-%m-%d").isin(exclude)]
     rng = np.random.default_rng(seed)
     picks = []
     for (cov, out), grp in ep.groupby(["news_covered", "outcome"]):
@@ -84,13 +87,16 @@ def explain_one(run_dir: str, date: str, method: str = EXPLAINED, backend: str =
 
 
 @app.command()
-def eval_set(run_dir: str, backend: str = "disabled", model: str = "qwen2.5:7b") -> None:
-    """Select the pre-specified evaluation set, explain each alert, write explanations/eval/eval_set.csv."""
+def eval_set(run_dir: str, backend: str = "disabled", model: str = "qwen2.5:7b", seed: int = 570,
+             name: str = "eval", exclude_from: str = typer.Option(
+                 None, help="eval_set.csv whose alerts are excluded (held-out set)")) -> None:
+    """Select a pre-specified evaluation set, explain each alert, write explanations/<name>/eval_set.csv."""
     from riskcausal_agents.agents import explain, save
 
     rd = Path(run_dir)
     ev = _evidence(rd)
-    sel = select_eval_set(rd, ev.news_end)
+    excl = set(pd.read_csv(exclude_from)["date"]) if exclude_from else None
+    sel = select_eval_set(rd, ev.news_end, seed=seed, exclude=excl)
     b, digest = _backend(backend, model)
     rows = []
     for _, r in sel.iterrows():
@@ -108,11 +114,12 @@ def eval_set(run_dir: str, backend: str = "disabled", model: str = "qwen2.5:7b")
                      "R6_abstention_appropriate": "", "checker_notes": "", "checked_by": ""})
         log.info("explained %s (%s): %d claims, abstain=%s", rec["alert_id"], r["stratum"], rows[-1]["n_claims"],
                  rows[-1]["abstain"])
-    out = rd / "explanations" / "eval"
+    out = rd / "explanations" / name
     out.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(out / "eval_set.csv", index=False)
     (out / "selection.json").write_text(json.dumps({
-        "method": EXPLAINED, "n_per_stratum": N_PER_STRATUM, "seed": 570, "backend": b.name,
+        "method": EXPLAINED, "n_per_stratum": N_PER_STRATUM, "seed": seed, "excluded_from": exclude_from,
+        "prompt_version": __import__("riskcausal_agents.agents", fromlist=["x"]).PROMPT_VERSION, "backend": b.name,
         "model_digest": digest, "news_coverage_end": str(ev.news_end),
         "strata_counts": sel["stratum"].value_counts().to_dict()}, indent=2))
     typer.echo(str(out / "eval_set.csv"))

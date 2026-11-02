@@ -205,3 +205,20 @@ def test_uncertainty_text_is_checked_too():
     v = validate_output({"claims": [], "uncertainty": "The evidence does not show whether stress followed."},
                         EV, "2020-02-21")
     assert v["uncertainty"].startswith("The evidence")
+
+
+def test_negated_causal_disclaimer_is_allowed_but_assertions_are_not():
+    from riskcausal_agents.validator import forbidden_hits
+
+    assert forbidden_hits("The evidence does not show causal relationships.") == []
+    assert forbidden_hits("This is not proof of anything.") == []
+    assert forbidden_hits("News caused the decline.")
+    assert forbidden_hits("No forecast is made; stocks will fall.")          # negation does not carry over
+
+
+def test_sentence_initial_words_are_not_treated_as_names():
+    from riskcausal_agents.validator import names_in
+
+    assert names_in("Missing news data. Does not show more.") == set()
+    assert names_in("Headlines mentioned Deutsche Bank.") == {"Deutsche", "Bank"}
+    assert names_in("SVB shares fell.") == {"SVB"}                            # acronyms count even at the start
