@@ -1,5 +1,5 @@
 PY := .venv/bin
-.PHONY: install test lint verify-data dev
+.PHONY: install test lint verify-data dev app app-stop app-test
 
 install:
 	python3.12 -m venv .venv && $(PY)/pip install -e ".[dev,news]"
@@ -15,3 +15,12 @@ verify-data:
 
 dev:
 	$(PY)/riskcausal run --profile dev
+
+app:
+	./run.sh start
+
+app-stop:
+	./run.sh stop
+
+app-test:
+	./run.sh test

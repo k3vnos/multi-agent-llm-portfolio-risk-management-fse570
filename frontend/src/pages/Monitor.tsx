@@ -127,7 +127,7 @@ function MiniNetwork() {
       right={<div className="flex gap-1"><Button active={mode === "change"} onClick={() => setMode("change")}>Change</Button><Button active={mode === "current"} onClick={() => setMode("current")}>Current</Button></div>}>
       {net.error ? <ErrorState message={net.error} /> : !net.data ? <Loading /> : (
         <div className="grid gap-3 md:grid-cols-[1fr_210px]">
-          <div><NetworkGraph net={net.data} mode={mode} selection={sel} onSelect={setSel} size={430} /><NetworkLegend mode={mode} /></div>
+          <div><div className="mx-auto max-w-[460px]"><NetworkGraph net={net.data} mode={mode} selection={sel} onSelect={setSel} size={440} /></div><NetworkLegend mode={mode} /></div>
           <Inspector net={net.data} sel={sel} onOpen={() => go("network")} />
         </div>
       )}

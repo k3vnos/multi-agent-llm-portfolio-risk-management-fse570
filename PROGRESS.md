@@ -440,3 +440,30 @@ shown; telemetry off); `ruff check src tests dashboard` clean.
 **Limitations:** LLM drafts exist only for the 24 evaluated alerts; the noise-floor caveat on the graph page is
 from the dev profile; the reference run's recorded git sha (58253a6) differs from the code it used (252cc7c), as
 logged in EXPERIMENT_LOG.
+
+## M8 — Final product: Structural Instability Monitor — 2026-11-02
+**Completed:** a React + TypeScript product UI modelled on the original demo video (dark theme, branding, "how to
+read" panel, KPI cards, instability-vs-stress chart with episode replay, circular relationship network with change
+colours and inspection, alerts list, "what moved this month", track record and lead-time chart), powered only by the
+saved M1–M7 outputs through new read-only replay endpoints (`/replay/meta|series|snapshot|network|agents|research`).
+- Pages: Monitor, Timeline (explicit hindsight toggle), Relationship network (changes/current, 1 week/1 month,
+  matrix), Alerts (evidence + hindsight-separated outcome), AI analysis (Graph/Macro/News agents, deterministic
+  synthesis briefing as the reliable default, the 24 evaluated LLM drafts shown as UNVERIFIED with hand-check flags,
+  explicit "news unavailable" after 2020-06-11), Research & validation (locked results unchanged). Guided 6-step demo.
+- Point-in-time by construction: percentiles over the previous 5 years up to D; regime = filtered Markov probability
+  (the saved filtered labels drop short runs using up to 4 days of future data, so they are not used); graph window
+  published by D; alerts issued on or before D. Deliberate departures from the video: no full-sample normalisation,
+  no "next refresh" / live claims, no synthetic track record, no trading "suggested next steps"; 2008 replay shown as
+  unavailable (test span starts 2014).
+- `run.sh` one-command launcher (localhost only): robust PID tracking (macOS Python re-launch), port and orphan
+  checks, no-cache `index.html`, stale-chunk self-heal and error boundary in the UI.
+
+**Tests:** `pytest` → **130 passed** (incl. 10 replay point-in-time/accuracy tests); `ruff` clean; Vitest → **11
+passed**; Playwright (system Chrome, no browser download) → **9 passed**, three consecutive runs. Bugs found by these
+tests and fixed: agents endpoint crashed for dates with news after a labelling change; tour/selector ambiguities.
+**Integrity:** locked M5 run unchanged (bit-identical to its re-run; no file modified); M6 held-out sheet unchanged.
+**Free/local:** new npm dev/runtime packages are open source (React, Vite, Tailwind, Recharts, Vitest, Playwright
+test runner 1.56.1); Playwright uses the installed Chrome; everything binds 127.0.0.1.
+**Limitations:** historical replay only (no live data refresh); LLM drafts exist for 24 alerts only; news coverage
+ends 2020-06-11; the SII shown is the locked pre-specified composite (z-score scaled per training fold).
+**Next:** M8 write-up (report/slides) when the team is ready.

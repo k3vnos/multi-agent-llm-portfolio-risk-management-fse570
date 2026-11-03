@@ -46,7 +46,15 @@ More stages are added milestone by milestone (see `PROGRESS.md`).
 Requires `ollama serve` bound to 127.0.0.1 and `ollama pull qwen2.5:7b`. Explanations are illustrative and never
 change predictions or metrics.
 
-## Read-only dashboard (M7, local only)
+## The product: Structural Instability Monitor (M8)
+```bash
+./run.sh start        # → http://127.0.0.1:8000  (./run.sh stop | restart | status | test)
+```
+React + TypeScript UI over the read-only local API: historical replay of the locked M5 run (monitor, timeline,
+relationship network, alerts, four-agent evidence view, research & validation) with a built-in guided demo.
+Everything is point-in-time as of the replay date. See **DEMO.md** for the walkthrough and troubleshooting.
+
+## Read-only dashboard (M7, internal research view, Streamlit)
 ```bash
 .venv/bin/uvicorn riskcausal_api.main:app --host 127.0.0.1 --port 8000          # read-only API
 RISKCAUSAL_API_URL=http://127.0.0.1:8000 .venv/bin/streamlit run dashboard/app.py   # http://127.0.0.1:8501

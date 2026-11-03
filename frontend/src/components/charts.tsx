@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import {
-  Area, AreaChart, CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter,
+  Area, AreaChart, CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
 import type { Series } from "../api";
@@ -106,8 +106,9 @@ export function StressChart({ series, date, range, hindsight = false, height = 3
           <Line type="monotone" dataKey="nfci_pct" stroke={C.nfci} strokeWidth={1.8} strokeDasharray="5 3" dot={false} isAnimationActive={false} connectNulls />
           <Line type="monotone" dataKey="vix_pct" stroke={C.vix} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
           <Line type="monotone" dataKey="sii_pct" stroke={C.sii} strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls />
-          <Scatter dataKey="alert" isAnimationActive={false}
-            shape={(p: { cx?: number; cy?: number }) => <path d={`M${p.cx},${(p.cy ?? 0) - 4} l3.5,6 h-7 z`} fill="#ff6b6b" />} />
+          <Line dataKey="alert" stroke="none" isAnimationActive={false} activeDot={false} legendType="none"
+            dot={(p: { cx?: number; cy?: number; index?: number; value?: number | null }) =>
+              p.value ? <path key={`a${p.index}`} d={`M${p.cx},${(p.cy ?? 0) - 4} l3.5,6 h-7 z`} fill="#ff6b6b" /> : <g key={`a${p.index}`} />} />
           {replayEnd && <ReferenceLine x={replayEnd} stroke={C.ink} strokeWidth={1.2} label={{ value: "replay date", position: "insideTopRight", fill: C.muted, fontSize: 10 }} />}
         </ComposedChart>
       </ResponsiveContainer>

@@ -36,7 +36,7 @@ export default function NetworkPage() {
         {net.error ? <ErrorState message={net.error} /> : !net.data ? <Loading /> : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div>
-              {view === "graph" ? <><NetworkGraph net={net.data} mode={mode} selection={sel} onSelect={setSel} size={620} /><NetworkLegend mode={mode} /></>
+              {view === "graph" ? <><div className="mx-auto max-w-[600px]"><NetworkGraph net={net.data} mode={mode} selection={sel} onSelect={setSel} size={600} /></div><NetworkLegend mode={mode} /></>
                 : <Matrix net={net.data} mode={mode} />}
             </div>
             <div className="space-y-4">
