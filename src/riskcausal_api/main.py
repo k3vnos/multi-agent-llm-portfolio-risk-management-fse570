@@ -285,4 +285,13 @@ _DIST = __import__("riskcausal.config", fromlist=["PROJECT_ROOT"]).PROJECT_ROOT 
 if _DIST.is_dir():                                    # built React app, served by the same local read-only server
     from fastapi.staticfiles import StaticFiles
 
-    app.mount("/", StaticFiles(directory=_DIST, html=True), name="ui")
+    class _UI(StaticFiles):
+        """index.html is never cached (it names the current build's files); hashed assets may be."""
+
+        async def get_response(self, path, scope):
+            resp = await super().get_response(path, scope)
+            if not path.startswith("assets/"):
+                resp.headers["Cache-Control"] = "no-cache"
+            return resp
+
+    app.mount("/", _UI(directory=_DIST, html=True), name="ui")

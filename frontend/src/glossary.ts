@@ -1,0 +1,20 @@
+// Plain-English explanations shown as tooltips. Written for someone who has never studied finance.
+export const G = {
+  sii: "Structural Instability Index (SII): how much the estimated web of relationships between assets changed over the last few estimation windows. It is the project's pre-specified composite of four graph-change measures, standardised with training-period statistics. Higher = relationships are shifting more than usual.",
+  percentile: "Percentile: where today's value sits compared with the same measure over the previous 5 years (using only data available at that time). 90th = higher than 90% of those days.",
+  regime: "Market regime as it would have been estimated at the time: a statistical model of SPY volatility gives the probability that markets were in a 'stressed' (high-volatility) state, using only data up to that day.",
+  vix: "VIX: the market's expectation of S&P 500 volatility over the next 30 days, derived from option prices. Often called the 'fear gauge'. Higher = investors expect bigger price swings.",
+  vixchg: "5-day change in VIX: how much the fear gauge rose or fell over the last week. This is a change, not a level.",
+  nfci: "NFCI (Chicago Fed National Financial Conditions Index): a weekly summary of how easy or hard it is to borrow and lend in US markets. 0 = average; positive = tighter (more stress); negative = looser. Shown as it was published at the time.",
+  turnover: "Relationship turnover: how many estimated links between assets appeared or disappeared since the previous estimation window (one window per week).",
+  status: "Status uses a fixed, documented rule: ALERT if the monitored model issued an alert at this close; UNUSUAL if, without an alert, any monitored indicator is above its 80th percentile of the previous 5 years; otherwise NORMAL. It is not a forecast.",
+  model: "Monitored model: a Bayesian logistic regression that uses the graph-instability measures plus standard market controls (VIX, VIX change, realised volatility, average correlation). It outputs a probability that a stress period starts within 10 trading days; an alert fires when it crosses a threshold chosen on earlier validation data.",
+  edges: "Arrows show estimated directed statistical dependence from VarLiNGAM on the previous 500 trading days: 'A → B' means movements in A help explain same-day movements in B in the model. This is not proof that A causes B.",
+  replay: "Historical replay: you are viewing what the saved research outputs showed as of the selected past date. Nothing here is live market data.",
+  alertOutcome: "Retrospective outcome: whether a stress period began within 10 trading days after the alert, judged with hindsight labels that were NOT available when the alert was issued.",
+  baa: "Baa credit spread: the extra yield investors demand to hold medium-quality corporate bonds instead of 10-year Treasuries. A low spread means credit risk was priced as benign.",
+  curve: "10y–2y yield curve: 10-year minus 2-year Treasury yield. Negative = 'inverted' curve.",
+  rocauc: "ROC-AUC: how well a signal ranks the days before stress above other calm days. 0.5 = no better than chance, 1.0 = perfect.",
+  prauc: "PR-AUC: precision-recall area; rewards signals that are right when they flag rare events. Compare with the base rate (share of positive days).",
+  ci: "95% confidence interval from a paired block bootstrap of the test days: the range of values consistent with the data.",
+};

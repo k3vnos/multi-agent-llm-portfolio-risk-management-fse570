@@ -313,6 +313,8 @@ def _briefing(items: list[dict], notes: list[str], method: str, d: str) -> list[
     return out
 
 
+GRAPH_LABEL = {"vl_shd_b0": "Links added or removed vs previous week", "vl_frob_b0_ma4": "Size of relationship changes (4-week average)",
+               "vl_n_edges_b0": "Number of active links"}
 MACRO_LABEL = {"VIXCLS": "VIX level", "NFCI": "NFCI financial conditions", "BAA10Y": "Baa credit spread",
                "T10Y2Y": "10y–2y yield curve", "rv21": "SPY realised volatility", "vix_chg_5d": "5-day VIX change",
                "avg_corr_63": "Average cross-asset correlation"}
@@ -346,8 +348,15 @@ def agents(date: str, method: str | None = None) -> dict:
             src, dst = e.id.split(":", 1)[1].split("@")[0].split("->")
             it["description"] = describe.edge_change(src, dst, e.values["before"], e.values["after"], tol=thr)["text"]
             it["label"] = f"{src} → {dst}"
+        elif e.kind == "graph":
+            feat = e.id.split(":")[1].split("@")[0]
+            it["label"] = GRAPH_LABEL.get(feat, "Graph measure")
+            v, p = e.values.get("value"), e.values.get("pct")
+            it["description"] = (f"{GRAPH_LABEL.get(feat, feat)}: {v:g}"
+                                 + (f", {p}th percentile of the previous 5 years ({describe.pct_label(p)})" if p is not None else "")
+                                 + f" — estimation window ending {e.id.split('@')[1]}. Estimated directed dependence, not causality.")
         else:
-            it["description"], it["label"] = e.text, e.kind
+            it["description"], it["label"] = e.text, "News headline"
         items.append(it)
     news_note = [n for n in b.notes if n.startswith("news")]
     draft = None
