@@ -274,3 +274,15 @@ def explanation(run_id: str, alert_id: str) -> dict:
         "hand_check": {k: hc.get(k) for k in ("R2_faithful_claims", "R3_hindsight_free", "R5_uncertainty_adequate",
                                                "R6_abstention_appropriate", "checked_by")},
         "label": "UNVERIFIED LLM DRAFT — not a verified conclusion. The deterministic evidence is authoritative."}))
+
+
+# ---------------------------------------------------------------- product UI (M8)
+from riskcausal_api import replay
+
+app.include_router(replay.router)
+
+_DIST = __import__("riskcausal.config", fromlist=["PROJECT_ROOT"]).PROJECT_ROOT / "frontend" / "dist"
+if _DIST.is_dir():                                    # built React app, served by the same local read-only server
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="ui")
