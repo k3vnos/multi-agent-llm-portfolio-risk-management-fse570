@@ -16,7 +16,27 @@ reboot: run `./run.sh start` again.
 **First time on a new machine:** `make install` (Python environment), and Node.js 20+ installed; `./run.sh start`
 installs the UI's npm packages automatically the first time.
 
-## 3–5 minute demonstration
+## Two modes
+- **Simple** (default, for presenting): *Briefing · Relationships · AI explanation · What we found*. Plain English,
+  large type; technical terms live in the **?** tooltips and the "Show …" expanders.
+- **Advanced** (toggle at the top): the complete technical dashboard — *Monitor · Timeline · Relationship network ·
+  Alerts · AI analysis · Research & validation*. Switching keeps the date and opens the matching page.
+
+## 3–5 minute demonstration (Simple Mode)
+Click **▶ Guided demo** on any Simple page — six plain-language steps:
+
+1. **What this app is** — a replay of past data, answering three questions: what is happening, why the model did or
+   did not alert, what evidence supports it.
+2. **COVID-19, 24 Feb 2020** — score 0.83 above the alert line 0.32 → alert; market mood stressed. Try *Play forward*.
+3. **The idea we tested** — purple (our relationship-change index) vs orange (the VIX fear gauge): if the idea
+   worked, purple would rise first. It didn't reliably.
+4. **Relationships** — only the 5 biggest changes by default; *All changes* / *All current connections* on request;
+   click an arrow to read it in words.
+5. **AI team** — Graph, Macro and News agents in one sentence each, a rule-based summary, details and the
+   unverified AI draft behind expanders.
+6. **What we found** — the indicator did not improve on the fear gauge; numbers, uncertainty and limitations.
+
+## Advanced Mode walkthrough
 Click **▶ Guided demo** (top right). Each step opens a real page on a real date:
 
 1. **Monitor** (31 Dec 2019) — what the dashboard shows: SII, market regime as estimated then, risk status (documented

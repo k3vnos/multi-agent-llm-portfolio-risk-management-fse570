@@ -17,8 +17,10 @@ export const material = (e: Edge) =>
 
 const label = (id: string) => id.replace("d_VIXCLS", "ΔVIX").replace("d_BAA10Y", "ΔBaa").replace("d_T10Y2Y", "ΔCurve");
 
-export function NetworkGraph({ net, mode, selection, onSelect, size = 460 }: {
+export function NetworkGraph({ net, mode, selection, onSelect, size = 460, limit }: {
   net: Network; mode: Mode; selection: Selection; onSelect: (s: Selection) => void; size?: number;
+  /** Show only the `limit` most important arrows (largest changes, or strongest current links). */
+  limit?: number;
 }) {
   const R = size / 2 - 52, cx = size / 2, cy = size / 2;
   const pos = useMemo(() => {
@@ -30,7 +32,10 @@ export function NetworkGraph({ net, mode, selection, onSelect, size = 460 }: {
     return p;
   }, [net.nodes, R, cx, cy]);
 
-  const shown = net.edges.filter((e) => (mode === "current" ? e.active : material(e)));
+  const all = net.edges.filter((e) => (mode === "current" ? e.active : material(e)));
+  const shown = limit === undefined ? all : [...all].sort((a, b) =>
+    mode === "current" ? Math.abs(b.after) - Math.abs(a.after) : Math.abs(b.after - b.before) - Math.abs(a.after - a.before)).slice(0, limit);
+  const focus = new Set(shown.flatMap((e) => [e.source, e.target]));
   const selNode = selection?.type === "node" ? selection.id : null;
   const selEdge = selection?.type === "edge" ? selection.id : null;
   const touches = (e: Edge) => !selNode || e.source === selNode || e.target === selNode;
@@ -75,9 +80,10 @@ export function NetworkGraph({ net, mode, selection, onSelect, size = 460 }: {
       {net.nodes.map((n) => {
         const p = pos[n.id];
         const on = selNode === n.id;
-        const changed = mode === "change" && n.changed > 0;
+        const changed = mode === "change" && n.changed > 0 && limit === undefined;
+        const faded = limit !== undefined && !focus.has(n.id) && !on;
         return (
-          <g key={n.id} transform={`translate(${p.x},${p.y})`} className="cursor-pointer" data-node={n.id}
+          <g key={n.id} transform={`translate(${p.x},${p.y})`} className="cursor-pointer" data-node={n.id} opacity={faded ? 0.35 : 1}
             onClick={(ev) => { ev.stopPropagation(); onSelect(on ? null : { type: "node", id: n.id }); }}>
             <title>{`${n.id} — ${n.name}`}</title>
             {changed && <circle r={21} fill="none" stroke="#eda100" strokeOpacity={0.5} />}

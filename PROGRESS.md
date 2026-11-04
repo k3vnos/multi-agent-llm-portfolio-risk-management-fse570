@@ -467,3 +467,26 @@ test runner 1.56.1); Playwright uses the installed Chrome; everything binds 127.
 **Limitations:** historical replay only (no live data refresh); LLM drafts exist for 24 alerts only; news coverage
 ends 2020-06-11; the SII shown is the locked pre-specified composite (z-score scaled per training fold).
 **Next:** M8 write-up (report/slides) when the team is ready.
+
+## M9 — Simple Mode (presentation readiness) — 2026-11-03
+**Completed (frontend only; backend, pipeline, locked results and evaluations untouched):**
+- **Simple Mode is the default**; **Advanced Mode** keeps the complete M8 dashboard unchanged. A header toggle
+  switches modes and keeps the replay date (Briefing↔Monitor, Relationships↔Network, AI explanation↔AI analysis,
+  What we found↔Research); every existing advanced URL still works.
+- **Briefing** answers three questions: *What is happening? Why alert or no alert?* (score vs alert line gauge) *What
+  evidence supports it?* (fear gauge, borrowing conditions, corporate credit, relationship changes, news), plus a
+  12-month chart with an evidence-grounded explanation beside it and the main research result.
+- **Relationships**: top 5 changes by default (graph and plain-language list), "All changes" / "All current
+  connections" on request, click-to-read inspector, noise caveat.
+- **AI explanation**: one paragraph per agent + rule-based synthesis; full evidence, the unverified LLM draft (73%
+  held-out faithfulness) and retrospective reliability in expanders.
+- **What we found**: plain statement, ROC-AUC bars with 95% ranges for VIX, controls, controls+indicator, SII and
+  indicator-only, plus meaning and limitations.
+- Plain-English text comes from one tested module (`frontend/src/plain.ts`): fixed templates filled with saved
+  numbers, same 20th/80th-percentile rule as the backend; wording checked against the CIs (no over-claiming).
+- Projector readability: 16–26 px type in Simple Mode, larger buttons, higher-contrast secondary text everywhere.
+- Guided demo rewritten for a non-specialist audience (Simple Mode); the Advanced tour is unchanged.
+
+**Tests:** pytest **130 passed**; ruff clean; Vitest **17 passed** (6 new plain-language tests); Playwright **16
+passed** (7 new Simple-Mode tests incl. mode switching), three consecutive runs. Locked M5 run unchanged
+(bit-identical; no file modified).

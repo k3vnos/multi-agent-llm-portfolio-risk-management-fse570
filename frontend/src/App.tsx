@@ -5,7 +5,7 @@ import { DataProvider, Footer, Header } from "./components/Shell";
 import { ErrorState, Loading } from "./components/ui";
 import { useAsync } from "./hooks";
 import Monitor from "./pages/Monitor";
-import { RouteProvider, useRoute } from "./state";
+import { modeOf, RouteProvider, useRoute } from "./state";
 
 /** Lazy page import that reloads once if a stale tab asks for a chunk from an older build. */
 function page<T>(load: () => Promise<T>): () => Promise<T> {
@@ -21,6 +21,10 @@ const NetworkPage = lazy(page(() => import("./pages/NetworkPage")));
 const Alerts = lazy(page(() => import("./pages/Alerts")));
 const Agents = lazy(page(() => import("./pages/Agents")));
 const Research = lazy(page(() => import("./pages/Research")));
+const SimpleHome = lazy(page(() => import("./pages/simple/Home")));
+const SimpleRelations = lazy(page(() => import("./pages/simple/Relations")));
+const SimpleExplain = lazy(page(() => import("./pages/simple/Explain")));
+const SimpleFindings = lazy(page(() => import("./pages/simple/Findings")));
 
 export default function App() {
   const d = useAsync(() => Promise.all([api.meta(), api.series()]), []);
@@ -39,11 +43,16 @@ export default function App() {
 function Shell() {
   const { page } = useRoute();
   const [tour, setTour] = useState<number | null>(null);
+  const [tourMode, setTourMode] = useState(modeOf(page));
   return (
-    <div className="min-h-screen bg-bg font-sans text-ink">
-      <Header onTour={() => setTour(0)} />
+    <div className={`min-h-screen bg-bg font-sans text-ink ${modeOf(page) === "simple" ? "simple-mode" : ""}`}>
+      <Header onTour={() => { setTourMode(modeOf(page)); setTour(0); }} />
       <main className="mx-auto max-w-[1400px] px-5 py-5">
         <Boundary key={page}><Suspense fallback={<Loading />}>
+          {page === "home" && <SimpleHome />}
+          {page === "relations" && <SimpleRelations />}
+          {page === "explain" && <SimpleExplain />}
+          {page === "findings" && <SimpleFindings />}
           {page === "monitor" && <Monitor />}
           {page === "timeline" && <Timeline />}
           {page === "network" && <NetworkPage />}
@@ -53,7 +62,7 @@ function Shell() {
         </Suspense></Boundary>
       </main>
       <Footer />
-      {tour !== null && <DemoTour step={tour} setStep={setTour} onClose={() => setTour(null)} />}
+      {tour !== null && <DemoTour mode={tourMode} step={tour} setStep={setTour} onClose={() => setTour(null)} />}
     </div>
   );
 }

@@ -1,14 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-export const PAGES = ["monitor", "timeline", "network", "alerts", "agents", "research"] as const;
+export const SIMPLE_PAGES = ["home", "relations", "explain", "findings"] as const;
+export const ADVANCED_PAGES = ["monitor", "timeline", "network", "alerts", "agents", "research"] as const;
+export const PAGES = [...SIMPLE_PAGES, ...ADVANCED_PAGES] as const;
 export type Page = (typeof PAGES)[number];
+export type Mode = "simple" | "advanced";
+
+/** The mode is a property of the page, so every URL (including all existing advanced ones) is stable. */
+export const modeOf = (p: Page): Mode => ((SIMPLE_PAGES as readonly string[]).includes(p) ? "simple" : "advanced");
+/** Switching mode keeps the date and lands on the matching page. */
+export const COUNTERPART: Record<Page, Page> = {
+  home: "monitor", relations: "network", explain: "agents", findings: "research",
+  monitor: "home", timeline: "home", network: "relations", alerts: "explain", agents: "explain", research: "findings",
+};
 
 interface Route { page: Page; date: string | null; alert: string | null }
 
 function parse(hash: string): Route {
   const [path, q] = hash.replace(/^#\/?/, "").split("?");
   const params = new URLSearchParams(q || "");
-  const page = (PAGES as readonly string[]).includes(path) ? (path as Page) : "monitor";
+  const page = (PAGES as readonly string[]).includes(path) ? (path as Page) : "home";
   return { page, date: params.get("date"), alert: params.get("alert") };
 }
 

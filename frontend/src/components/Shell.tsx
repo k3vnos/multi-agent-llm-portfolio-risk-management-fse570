@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import type { Meta, Series } from "../api";
 import { longDate } from "../format";
 import { G } from "../glossary";
-import { PAGES, type Page, useRoute } from "../state";
+import { ADVANCED_PAGES, COUNTERPART, modeOf, SIMPLE_PAGES, type Page, useRoute } from "../state";
 import { Button, Info } from "./ui";
 
 interface DataCtx { meta: Meta; series: Series }
@@ -15,9 +15,26 @@ export function useData(): DataCtx {
 }
 
 const TITLES: Record<Page, string> = {
+  home: "Briefing", relations: "Relationships", explain: "AI explanation", findings: "What we found",
   monitor: "Monitor", timeline: "Timeline", network: "Relationship network", alerts: "Alerts", agents: "AI analysis",
   research: "Research & validation",
 };
+
+function ModeToggle() {
+  const { page, go } = useRoute();
+  const mode = modeOf(page);
+  const btn = (m: "simple" | "advanced", label: string) => (
+    <button type="button" aria-pressed={mode === m} onClick={() => mode !== m && go(COUNTERPART[page])}
+      className={`rounded-md px-3 py-1 text-[13px] font-medium transition-colors ${mode === m ? "bg-ink text-bg" : "text-muted hover:text-ink"}`}>
+      {label}
+    </button>
+  );
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg border border-line bg-panel2 p-0.5" role="group" aria-label="Display mode">
+      {btn("simple", "Simple")}{btn("advanced", "Advanced")}
+    </div>
+  );
+}
 
 export function Logo() {
   return (
@@ -34,7 +51,7 @@ export function Header({ onTour }: { onTour: () => void }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/95 backdrop-blur">
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-2 px-5 py-2.5">
-        <button type="button" onClick={() => go("monitor")} className="flex items-center gap-2.5 text-left">
+        <button type="button" onClick={() => go(modeOf(page) === "simple" ? "home" : "monitor")} className="flex items-center gap-2.5 text-left">
           <Logo />
           <div>
             <div className="text-[15px] font-semibold leading-tight text-ink">Structural Instability Monitor</div>
@@ -44,10 +61,11 @@ export function Header({ onTour }: { onTour: () => void }) {
         <span className="inline-flex items-center gap-1.5 rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-[11px] font-medium tracking-wide text-warn">
           HISTORICAL REPLAY <Info text={G.replay} />
         </span>
+        <ModeToggle />
         <nav className="flex flex-wrap gap-1" aria-label="Main">
-          {PAGES.map((p) => (
+          {(modeOf(page) === "simple" ? SIMPLE_PAGES : ADVANCED_PAGES).map((p) => (
             <button key={p} type="button" onClick={() => go(p)} aria-current={page === p ? "page" : undefined}
-              className={`rounded-md px-3 py-1.5 text-[13px] transition-colors ${page === p ? "bg-accent/20 text-ink" : "text-muted hover:bg-panel2 hover:text-ink"}`}>
+              className={`rounded-md px-3 py-1.5 transition-colors ${modeOf(page) === "simple" ? "text-[15px]" : "text-[13px]"} ${page === p ? "bg-accent/20 text-ink" : "text-muted hover:bg-panel2 hover:text-ink"}`}>
               {TITLES[p]}
             </button>
           ))}

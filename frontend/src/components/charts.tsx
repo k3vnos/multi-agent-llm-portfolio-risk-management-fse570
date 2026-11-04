@@ -7,7 +7,7 @@ import type { Series } from "../api";
 import { fmt, longDate, ordinal } from "../format";
 
 export const C = { sii: "#9085e9", vix: "#d95926", nfci: "#199e70", grid: "#1f2733", axis: "#5d6673", ink: "#e6e8eb",
-                   muted: "#8a93a0", stress: "rgba(208,59,59,0.13)", hindsight: "rgba(250,178,25,0.08)" };
+                   muted: "#a3acb9", stress: "rgba(208,59,59,0.13)", hindsight: "rgba(250,178,25,0.08)" };
 
 export type Range = "6M" | "1Y" | "3Y" | "5Y" | "Max";
 const DAYS: Record<Range, number> = { "6M": 126, "1Y": 252, "3Y": 756, "5Y": 1260, Max: 1e9 };
@@ -83,8 +83,10 @@ function TipRow({ color, label, value, dashed = false }: { color: string; label:
   );
 }
 
-export function StressChart({ series, date, range, hindsight = false, height = 300, onPick }: {
+export function StressChart({ series, date, range, hindsight = false, height = 300, onPick, simple = false }: {
   series: Series; date: string; range: Range; hindsight?: boolean; height?: number; onPick?: (d: string) => void;
+  /** Simple Mode: two lines (fear gauge, relationship-change index), larger axis text. */
+  simple?: boolean;
 }) {
   const rows = useMemo(() => window(series, date, range, hindsight), [series, date, range, hindsight]);
   const regime = useMemo(() => runs(rows, (r) => !r.future && (r.p ?? 0) > 0.5), [rows]);
@@ -99,11 +101,11 @@ export function StressChart({ series, date, range, hindsight = false, height = 3
           <CartesianGrid stroke={C.grid} vertical={false} />
           {regime.map(([a, b]) => <ReferenceArea key={`r${a}`} x1={a} x2={b} y1={0} y2={106} fill={C.stress} ifOverflow="hidden" />)}
           {retro.map(([a, b]) => <ReferenceArea key={`h${a}`} x1={a} x2={b} y1={0} y2={106} fill={C.hindsight} stroke="rgba(250,178,25,0.35)" strokeDasharray="3 3" ifOverflow="hidden" />)}
-          <XAxis dataKey="date" ticks={monthTicks(rows.map((r) => r.date))} tickFormatter={tick} interval={0} stroke={C.axis} tick={{ fill: C.muted, fontSize: 11 }} tickLine={false} />
-          <YAxis domain={[0, 106]} ticks={[0, 20, 50, 80, 100]} stroke={C.axis} tick={{ fill: C.muted, fontSize: 11 }} tickLine={false} axisLine={false} />
+          <XAxis dataKey="date" ticks={monthTicks(rows.map((r) => r.date))} tickFormatter={tick} interval={0} stroke={C.axis} tick={{ fill: C.muted, fontSize: simple ? 13 : 11 }} tickLine={false} />
+          <YAxis domain={[0, 106]} ticks={[0, 20, 50, 80, 100]} stroke={C.axis} tick={{ fill: C.muted, fontSize: simple ? 13 : 11 }} tickLine={false} axisLine={false} />
           <ReferenceLine y={80} stroke={C.axis} strokeDasharray="2 4" />
           <Tooltip content={<StressTooltip />} cursor={{ stroke: C.muted, strokeWidth: 1 }} />
-          <Line type="monotone" dataKey="nfci_pct" stroke={C.nfci} strokeWidth={1.8} strokeDasharray="5 3" dot={false} isAnimationActive={false} connectNulls />
+          {!simple && <Line type="monotone" dataKey="nfci_pct" stroke={C.nfci} strokeWidth={1.8} strokeDasharray="5 3" dot={false} isAnimationActive={false} connectNulls />}
           <Line type="monotone" dataKey="vix_pct" stroke={C.vix} strokeWidth={1.8} dot={false} isAnimationActive={false} connectNulls />
           <Line type="monotone" dataKey="sii_pct" stroke={C.sii} strokeWidth={2.4} dot={false} isAnimationActive={false} connectNulls />
           <Line dataKey="alert" stroke="none" isAnimationActive={false} activeDot={false} legendType="none"
