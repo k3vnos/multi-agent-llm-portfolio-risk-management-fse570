@@ -1,4 +1,6 @@
-"""Read-only local API over saved runs (M7). GET routes only; binds 127.0.0.1 (api.host is validated as local).
+"""Read-only local API over saved runs (M7). Binds 127.0.0.1 (api.host is validated as local). All routes are GET,
+except the two M10 routes that start / cancel a live local-LLM agent job (`agents_live.py`); those write nothing to
+disk and never change a score, alert or metric.
 
 Every response is `{"meta": {run_id, role, git_sha, synthetic, audit_passed, kind}, "data": ...}` where `kind` is
 `research_result` (from metrics.json / ci.json / predictions), `evidence` (point-in-time inputs, deterministic
@@ -277,9 +279,11 @@ def explanation(run_id: str, alert_id: str) -> dict:
 
 
 # ---------------------------------------------------------------- product UI (M8)
-from riskcausal_api import replay
+from riskcausal_api import agents_live, portfolio, replay
 
 app.include_router(replay.router)
+app.include_router(portfolio.router)        # exploratory Portfolio Lens (GET only)
+app.include_router(agents_live.router)      # live local-LLM agent runs: the only POST routes (start / cancel a job)
 
 _DIST = __import__("riskcausal.config", fromlist=["PROJECT_ROOT"]).PROJECT_ROOT / "frontend" / "dist"
 if _DIST.is_dir():                                    # built React app, served by the same local read-only server

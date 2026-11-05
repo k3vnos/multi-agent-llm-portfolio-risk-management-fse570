@@ -77,11 +77,11 @@ test("alert explorer shows evidence and keeps the outcome as hindsight", async (
 });
 
 test("AI analysis: deterministic briefing, unverified LLM draft, explicit missing news", async ({ page }) => {
-  await open(page, "#/agents?date=2020-01-10", "LLM-written draft");
+  await open(page, "#/agents?date=2020-01-10", "M6 free-text LLM draft");
   await expect(page.getByTestId("synthesis")).toBeVisible();
   await expect(page.getByTestId("llm-draft")).toContainText("UNVERIFIED LLM DRAFT");
   await expect(page.getByTestId("llm-draft")).toContainText("unfaithful");
-  await open(page, "#/agents?date=2023-03-08", "LLM-written draft");
+  await open(page, "#/agents?date=2023-03-08", "M6 free-text LLM draft");
   await expect(page.getByTestId("news-unavailable")).toContainText("not neutral");
 });
 
@@ -96,12 +96,12 @@ test("research section reports the locked results exactly", async ({ page, reque
   await expect(page.getByText("bit-identical")).toBeVisible();
 });
 
-test("guided demo walks through all six steps on real pages", async ({ page }) => {
+test("guided demo walks through all seven steps on real pages", async ({ page }) => {
   await open(page, "#/monitor", "What moved this month");
   await page.getByRole("button", { name: "▶ Guided demo" }).click();
-  const expected = ["monitor", "monitor", "timeline", "network", "agents", "research"];
+  const expected = ["monitor", "monitor", "timeline", "network", "lens", "agents", "research"];
   for (let i = 0; i < expected.length; i++) {
-    await expect(page.getByTestId("tour")).toContainText(`step ${i + 1} of 6`);
+    await expect(page.getByTestId("tour")).toContainText(`step ${i + 1} of 7`);
     await expect(page).toHaveURL(new RegExp(`#/${expected[i]}`));
     if (i < expected.length - 1) await page.getByTestId("tour").getByRole("button", { name: "Next", exact: true }).click();
   }

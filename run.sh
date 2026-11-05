@@ -7,6 +7,9 @@
 #   ./run.sh open      open the app in the default browser
 #   ./run.sh rebuild   force a fresh UI build, then restart
 #   ./run.sh test      backend tests + frontend unit tests (+ browser tests if the server is running)
+# "Ask the agents" needs the local Ollama server (free, on this Mac). If Ollama is installed but not running, start
+# launches it on 127.0.0.1 and stop shuts it down again; an Ollama you started yourself is left alone. Without
+# Ollama the app still works and shows the saved explanations.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,6 +18,7 @@ PORT="${PORT:-8000}"
 URL="http://$HOST:$PORT/#/monitor"
 PIDFILE="$ROOT/outputs/logs/app.pid"
 LOG="$ROOT/outputs/logs/app.log"
+OLLAMA_PIDFILE="$ROOT/outputs/logs/ollama.pid"
 PY="$ROOT/.venv/bin/python"
 
 say() { printf '\033[1;35m▸\033[0m %s\n' "$*"; }
@@ -36,8 +40,27 @@ build() {
     || die "UI build failed — see $LOG"
 }
 
+ollama_up() { curl -fsS "http://127.0.0.1:11434/api/version" >/dev/null 2>&1; }
+
+ollama_start() {
+  if ollama_up; then say "Local AI model server (Ollama) already running."; return; fi
+  if ! command -v ollama >/dev/null; then say "Ollama not installed: live 'Ask the agents' is off; saved explanations are shown."; return; fi
+  say "Starting the local AI model server (Ollama, 127.0.0.1 only)…"
+  ( OLLAMA_HOST=127.0.0.1:11434 nohup ollama serve </dev/null >>"$ROOT/outputs/logs/ollama_serve.log" 2>&1 &
+    echo $! >"$OLLAMA_PIDFILE" ) </dev/null >/dev/null 2>&1
+  for _ in $(seq 1 30); do ollama_up && break; sleep 0.5; done
+  ollama_up || say "Ollama did not start — see outputs/logs/ollama_serve.log (the app works without it)."
+}
+
+ollama_stop() {   # only an Ollama that this script started
+  [[ -f "$OLLAMA_PIDFILE" ]] || return 0
+  kill "$(cat "$OLLAMA_PIDFILE")" 2>/dev/null && say "Stopped the local AI model server we started." || true
+  rm -f "$OLLAMA_PIDFILE"
+}
+
 start() {
   check
+  [[ "${NO_OLLAMA:-0}" == "1" ]] || ollama_start
   mkdir -p "$(dirname "$LOG")"
   if running; then say "Already running at $URL"; return; fi
   if [[ -n "$(ours)" ]]; then say "Found a leftover server from an earlier session; stopping it."; stop; fi
@@ -76,6 +99,7 @@ stop() {
 }
 
 status() {
+  if ollama_up; then say "Local AI model server (Ollama): running"; else say "Local AI model server (Ollama): not running (saved explanations only)"; fi
   if running; then say "Running (pid $(cat "$PIDFILE")) at $URL"
   elif [[ -n "$(ours)" ]]; then say "A server is running without a pid file (pid $(ours | tr '\n' ' ')). Use ./run.sh restart."
   else say "Not running. Start with: ./run.sh start"; fi
@@ -83,7 +107,7 @@ status() {
 
 case "${1:-start}" in
   start) start ;;
-  stop) stop ;;
+  stop) stop; ollama_stop ;;
   restart) stop; start ;;
   status) status ;;
   open) open "$URL" ;;

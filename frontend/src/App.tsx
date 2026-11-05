@@ -25,6 +25,7 @@ const SimpleHome = lazy(page(() => import("./pages/simple/Home")));
 const SimpleRelations = lazy(page(() => import("./pages/simple/Relations")));
 const SimpleExplain = lazy(page(() => import("./pages/simple/Explain")));
 const SimpleFindings = lazy(page(() => import("./pages/simple/Findings")));
+const PortfolioLens = lazy(page(() => import("./pages/PortfolioLens")));
 
 export default function App() {
   const d = useAsync(() => Promise.all([api.meta(), api.series()]), []);
@@ -52,11 +53,13 @@ function Shell() {
           {page === "home" && <SimpleHome />}
           {page === "relations" && <SimpleRelations />}
           {page === "explain" && <SimpleExplain />}
+          {page === "portfolio" && <PortfolioLens simple />}
           {page === "findings" && <SimpleFindings />}
           {page === "monitor" && <Monitor />}
           {page === "timeline" && <Timeline />}
           {page === "network" && <NetworkPage />}
           {page === "alerts" && <Alerts />}
+          {page === "lens" && <PortfolioLens />}
           {page === "agents" && <Agents />}
           {page === "research" && <Research />}
         </Suspense></Boundary>

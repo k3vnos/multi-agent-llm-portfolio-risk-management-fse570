@@ -30,8 +30,10 @@ def test_api_is_get_only_and_local():
     from riskcausal.config import load_config
     from riskcausal_api.main import app
 
-    methods = {m for r in app.routes if hasattr(r, "methods") for m in r.methods}
-    assert methods <= {"GET", "HEAD"}
+    # every route, including those of included routers (FastAPI >= 0.162 nests them out of app.routes)
+    ops = {(path, m.upper()) for path, item in app.openapi()["paths"].items() for m in item}
+    assert len(ops) > 20
+    assert {o for o in ops if o[1] != "GET"} == {("/agents/run", "POST"), ("/agents/jobs/{jid}/cancel", "POST")}
     assert dashboard_config()["api"]["host"] == "127.0.0.1" and load_config("full").api.host == "127.0.0.1"
     src = (PROJECT_ROOT / "src" / "riskcausal_api" / "main.py").read_text()
     assert not re.search(r"^\s*(from|import)\s+riskcausal\.pipeline", src, re.MULTILINE)

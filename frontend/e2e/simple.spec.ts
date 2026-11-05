@@ -77,13 +77,13 @@ test("what we found: plain result and locked numbers", async ({ page, request })
   }
 });
 
-test("simple guided demo walks six plain-language steps", async ({ page }) => {
+test("simple guided demo walks seven plain-language steps", async ({ page }) => {
   await page.goto(`/?t=${Date.now()}`);
   await expect(page.getByTestId("three-questions")).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "▶ Guided demo" }).click();
-  const pages = ["home", "home", "home", "relations", "explain", "findings"];
+  const pages = ["home", "home", "home", "relations", "portfolio", "explain", "findings"];
   for (let i = 0; i < pages.length; i++) {
-    await expect(page.getByTestId("tour")).toContainText(`step ${i + 1} of 6`);
+    await expect(page.getByTestId("tour")).toContainText(`step ${i + 1} of 7`);
     await expect(page).toHaveURL(new RegExp(`#/${pages[i]}`));
     if (i < pages.length - 1) await page.getByTestId("tour").getByRole("button", { name: "Next", exact: true }).click();
   }

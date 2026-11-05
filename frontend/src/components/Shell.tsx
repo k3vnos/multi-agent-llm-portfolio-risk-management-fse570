@@ -15,8 +15,8 @@ export function useData(): DataCtx {
 }
 
 const TITLES: Record<Page, string> = {
-  home: "Briefing", relations: "Relationships", explain: "AI explanation", findings: "What we found",
-  monitor: "Monitor", timeline: "Timeline", network: "Relationship network", alerts: "Alerts", agents: "AI analysis",
+  home: "Briefing", relations: "Relationships", portfolio: "My portfolio", explain: "Ask the AI agents", findings: "What we found",
+  monitor: "Monitor", timeline: "Timeline", network: "Relationship network", alerts: "Alerts", lens: "Portfolio Lens", agents: "AI agents",
   research: "Research & validation",
 };
 

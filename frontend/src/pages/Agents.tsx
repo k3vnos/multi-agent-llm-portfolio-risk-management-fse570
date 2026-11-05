@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type Agents as AgentsT, type EvidenceItem } from "../api";
+import { AskAgents } from "../components/AskAgents";
 import { ReplayBar, useData } from "../components/Shell";
 import { Button, Card, ErrorState, Info, Loading, Pill, Unavailable } from "../components/ui";
 import { longDate, methodName, nice } from "../format";
@@ -8,12 +9,13 @@ import { useRoute } from "../state";
 import { NewsCard } from "./Alerts";
 
 export default function Agents() {
-  const { date } = useRoute();
+  const { date, pf } = useRoute();
   const { meta } = useData();
   const a = useAsync(() => api.agents(date, meta.monitored_model), [date]);
   return (
     <div className="space-y-4">
       <ReplayBar />
+      <AskAgents portfolio={pf} />
       <Pipeline />
       {a.error ? <ErrorState message={a.error} /> : !a.data ? <Loading label="Gathering point-in-time evidence…" /> : <AgentViews a={a.data} />}
     </div>
@@ -25,7 +27,7 @@ function Pipeline() {
     <div className="min-w-[150px] flex-1 rounded-lg border bg-panel2 px-3 py-2" style={{ borderColor: c }}><div className="text-[13px] font-semibold text-ink">{t}</div><div className="text-[11px] text-muted">{s}</div></div>
   );
   return (
-    <Card title="Multi-agent evidence team" info="Each specialist agent only sees its own slice of the evidence that was available at the 4pm New York close of the replay date. The synthesis agent combines their validated findings. The reliable default shown here is deterministic; LLM-written drafts are shown separately as unverified.">
+    <Card title="Rule-based evidence view (no model)" info="Each specialist agent only sees its own slice of the evidence that was available at the 4pm New York close of the replay date. Below is that evidence and a deterministic briefing built from it — always available, even without the local model. The live / saved v4 agent trace above shows what the model did with the same evidence; the M6 free-text draft further down is kept for the locked M6 evaluation.">
       <div className="flex flex-wrap items-stretch gap-2 text-center md:flex-nowrap">
         <div className="flex flex-1 flex-col gap-2">{box("Graph agent", "estimated relationship changes", "#9085e9")}{box("Macro agent", "market & economic indicators", "#d95926")}{box("News agent", "headlines before the cutoff", "#199e70")}</div>
         <div className="flex items-center px-2 text-2xl text-dim" aria-hidden>→</div>
@@ -92,7 +94,7 @@ function LlmDraft({ a }: { a: AgentsT }) {
   const [open, setOpen] = useState(false);
   const d = a.llm_draft;
   return (
-    <Card title="LLM-written draft" subtitle="local qwen2.5:7b via Ollama · generated offline for 24 evaluated alerts"
+    <Card title="M6 free-text LLM draft (superseded by the v4 agents above)" subtitle="local qwen2.5:7b via Ollama · generated offline for 24 evaluated alerts"
       info="In the project's held-out hand check, 73% of LLM claims were faithful to their evidence (below the 90% target). Drafts are therefore never shown as conclusions; automatic validation catches citation, number, name, date and forbidden-language errors but not all misreadings.">
       {!d ? (
         <div className="space-y-2 text-sm text-muted">

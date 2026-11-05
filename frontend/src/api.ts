@@ -1,4 +1,5 @@
-// Typed, cached GET client for the local read-only API. Nothing here writes or calls a model.
+// Typed client for the local API. GET responses are cached; the only writes are starting / cancelling a live
+// local-model agent job (`live.run`, `live.cancel`), which never change a score, alert or saved result.
 
 export type Level = "alert" | "unusual" | "normal";
 
@@ -109,4 +110,76 @@ export const api = {
   runs: () => get<RunsResp>("/runs"),
   episodes: (runId: string, method: string) =>
     get<{ data: { episodes: Episode[] } }>(`/runs/${runId}/alerts?method=${encodeURIComponent(method)}`),
+};
+
+// ---------------------------------------------------------------- M10: v4 agents, live runs, Portfolio Lens
+export interface Fact {
+  id: string; agent: string; kind: string; label: string; allowed: string[]; prompt: string; text: string;
+  source: string; available: string; values: Record<string, unknown>;
+}
+export interface V4Claim {
+  fact_id: string; label: string; note: string; source: string | null; kind?: string; text?: string; true_label?: string;
+  reasons?: string[]; note_rejected?: { text: string; reasons: string[] };
+}
+export interface V4Specialist {
+  role: "graph" | "macro" | "news"; inputs: Fact[]; claims: V4Claim[]; rejected: V4Claim[]; abstain: boolean;
+  model_abstained: boolean; abstain_reason: string; called_model: boolean; prompt?: string; raw_output?: unknown;
+  meta?: { wall_secs?: number; eval_count?: number; prompt_eval_count?: number };
+}
+export interface V4Synthesis {
+  role: "synthesis"; called_model: boolean; validated?: boolean; abstain: boolean; abstain_reason?: string;
+  inputs: { validated_facts: string[]; abstained: string[] }; fallback_text: string; true_overall: string;
+  key_facts?: string[]; overall?: string; text?: string | null; note?: string;
+  note_rejected?: { text: string; reasons: string[] }; rejected: { reasons: string[] }[];
+  meta?: { wall_secs?: number };
+}
+export interface V4Record {
+  alert_id: string; decision_date: string; cutoff_utc: string; method: string; backend: string;
+  model_digest: string | null; prompt_version: string; created_utc: string; secs: number; facts: Fact[];
+  coverage_notes: string[]; specialists: V4Specialist[]; synthesis: V4Synthesis; disclaimer: string;
+  group?: string; portfolio?: string | null;
+}
+export interface AgentEvent { type: string; agent?: string; stage?: string; detail?: string; tokens?: number; t: number;
+  called_model?: boolean; abstain?: boolean; n_valid?: number; n_rejected?: number; validated?: boolean; secs?: number; status?: string; n_inputs?: number }
+export interface Job {
+  id: string; date: string; method: string; portfolio: string | null;
+  status: "queued" | "running" | "done" | "error" | "cancelled" | "timeout";
+  error: string | null; result: V4Record | null; events: AgentEvent[]; elapsed: number; notice: string;
+}
+export interface AgentStatus { available: boolean; model: string; digest?: string; reason?: string; busy: boolean; notice: string; fallback: string }
+export interface Holding { ticker: string; name: string; weight: number; risk_share: number; vol_63d: number; return_21d: number; node: string | null; node_is_proxy: boolean }
+export interface PortfolioLink { id: string; source: string; target: string; before: number; after: number; change: string; text: string; holdings: string[]; weight_touched: number }
+export interface PortfolioAnalysis {
+  date: string; spec: string; label: string; data_through: string; n_sessions: number;
+  metrics: { return_21d: number; return_21d_pct: number | null; return_252d: number; vol_63d: number; vol_63d_pct: number | null;
+    vol_252d: number; var95_hist: number; cvar95_hist: number; var95_param: number; max_drawdown_252d: number;
+    avg_comovement_63d: number | null; avg_comovement_prev_63d: number | null };
+  holdings: Holding[];
+  network: { window_end: string; previous_window_end: string; nodes: Record<string, string[]>; not_in_graph: string[];
+    links: PortfolioLink[]; n_links: number; weight_on_changed_nodes: number };
+  series: { dates: string[]; value: number[]; drawdown: number[] }; definitions: string;
+}
+export interface Universe { etfs: { ticker: string; name: string; node: string | null; first_date: string }[];
+  examples: { id: string; name: string; spec: string; about: string }[]; label: string }
+
+/** Uncached request (live job state and the two approved POST routes). */
+async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const r = await fetch(path, { ...init, headers: { Accept: "application/json", "Content-Type": "application/json" } });
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail || `${r.status} ${r.statusText}`);
+  }
+  return r.json() as Promise<T>;
+}
+
+export const live = {
+  status: () => req<AgentStatus>("/agents/status"),
+  run: (date: string, portfolio?: string | null) =>
+    req<{ job_id: string }>("/agents/run", { method: "POST", body: JSON.stringify({ date, portfolio: portfolio || null }) }),
+  job: (id: string) => req<Job>(`/agents/jobs/${id}`),
+  cancel: (id: string) => req<unknown>(`/agents/jobs/${id}/cancel`, { method: "POST" }),
+  saved: (date: string) => get<{ date: string; available_for: string[]; record: V4Record | null }>(`/agents/saved/${date}`),
+  universe: () => get<Universe>("/portfolio/universe"),
+  analyze: (spec: string, date: string) =>
+    get<PortfolioAnalysis>(`/portfolio/analyze?spec=${encodeURIComponent(spec)}&date=${date}`),
 };

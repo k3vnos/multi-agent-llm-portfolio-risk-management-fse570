@@ -125,8 +125,10 @@ def test_research_equals_locked_metrics(c):
 def test_ui_index_is_not_cached_and_routes_stay_get_only(c):
     from riskcausal_api.main import app
 
-    methods = {m for r in app.routes if hasattr(r, "methods") and r.methods for m in r.methods}
-    assert methods <= {"GET", "HEAD"}
+    # every route, including those of included routers (FastAPI >= 0.162 nests them out of app.routes)
+    ops = {(path, m.upper()) for path, item in app.openapi()["paths"].items() for m in item}
+    assert len(ops) > 20
+    assert {o for o in ops if o[1] != "GET"} == {("/agents/run", "POST"), ("/agents/jobs/{jid}/cancel", "POST")}
     if (PROJECT_ROOT / "frontend" / "dist" / "index.html").exists():
         r = c.get("/")
         assert r.status_code == 200 and "Structural Instability Monitor" in r.text
