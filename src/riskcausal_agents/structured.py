@@ -296,7 +296,7 @@ def run_synthesis(b: Bundle, facts: list[Fact], specialists: list[dict], backend
     if ok:
         text = (f"{alert.text.split(';')[0]}. " if alert else "") + \
                f"Taken together, the validated evidence was {truth}. Key facts: " + \
-               " ".join(by[k].text for k in keys) + \
+               " ".join(by[k].text for k in keys if by[k].kind != "alert") + \
                (f" Not covered: {', '.join(a + ' agent' for a in abstained)} (missing data, not 'calm')." if abstained else "")
     return {**base, "called_model": True, "validated": ok, "abstain": False, "key_facts": keys,
             "overall": out.get("overall"), "missing_agents": out.get("missing_agents"), "text": text,

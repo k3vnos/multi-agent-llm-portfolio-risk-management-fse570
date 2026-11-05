@@ -22,6 +22,10 @@ document in the repo (including `IMPLEMENTATION_PLAN.md`).
   validation and tests exist, but no model is called.
 - The Ollama backend refuses any host that is not `localhost` / `127.0.0.1` / `::1`. There is **no fallback**
   to any other provider: if the local model is unavailable, the agent step fails with a clear error.
+- M10 (team-approved): the product UI can run the agents live ("Ask the agents") on the **same already-installed**
+  `qwen2.5:7b` model. No new model or larger model was downloaded. `./run.sh start` starts `ollama serve` on
+  127.0.0.1 only if Ollama is installed and not already running, and `./run.sh stop` stops only an Ollama it started.
+  If Ollama is unavailable the UI shows the saved explanations; nothing falls back to another provider.
 
 ## 3. Everything stays local
 - All development and runs happen on this Mac.

@@ -20,9 +20,15 @@ export function LabelChip({ label }: { label: string }) {
   return <span className={`inline-flex shrink-0 items-center rounded border px-1.5 py-px text-[11px] font-medium ${c}`}>{label}</span>;
 }
 
+/** Drop a sentence repeated verbatim (older saved records restate the alert as a key fact). */
+const dedupe = (t: string) => {
+  const seen = new Set<string>();
+  return t.split(/(?<=\.)\s+/).filter((x) => { const k = x.split(";")[0].replace(/\.$/, ""); if (seen.has(k)) return false; seen.add(k); return true; }).join(" ");
+};
+
 function plainReason(r: string): string {
   return r.replace(/^label mismatch: model said '([^']+)', the numbers say '([^']+)'$/, "the model said “$1”, but the numbers say “$2”")
-    .replace(/^note /, "note — ");
+    .replace(/^note (\w+): /, "$1: ");
 }
 
 export function AgentTrace({ rec, compact = false }: { rec: V4Record; compact?: boolean }) {
@@ -141,8 +147,10 @@ function SynthesisCard({ syn, facts, compact }: { syn: V4Synthesis; facts: Recor
             : <span className="rounded border border-warn/50 px-1.5 py-px text-[11px] text-warn">not run — {syn.abstain_reason}</span>}
         {syn.meta?.wall_secs !== undefined && <span className="ml-auto font-mono text-[11px] text-dim">{syn.meta.wall_secs}s</span>}
       </div>
-      <p className={`mt-2 ${compact ? "text-[17px]" : "text-[13.5px]"} leading-relaxed text-ink`} data-testid="synthesis-text">{nice(ok ? syn.text! : syn.fallback_text)}</p>
-      {ok && syn.note && <p className={`mt-1 ${compact ? "text-[14px]" : "text-[12px]"} italic text-muted`}>Model note (passed checks): “{syn.note}”</p>}
+      <p className={`mt-2 ${compact ? "text-[17px]" : "text-[13.5px]"} leading-relaxed text-ink`} data-testid="synthesis-text">{nice(dedupe(ok ? syn.text! : syn.fallback_text))}</p>
+      {/* Synthesis notes are never shown as statements: in the held-out hand check only 1 of 10 that passed the automatic
+          checks was faithful (specialist notes: 96 of 96). Advanced Mode shows them, clearly marked, for audit only. */}
+      {!compact && ok && syn.note && <p className="mt-1 text-[11px] text-dim">Model's own synthesis wording (hidden from Simple Mode — not reliable in our held-out check): “{syn.note}”</p>}
       {!ok && syn.rejected.length > 0 && <p className={`mt-1 ${compact ? "text-[13px]" : "text-[11.5px]"} text-muted`}>Why rejected: {syn.rejected[0].reasons.join("; ")}</p>}
       {!compact && ok && syn.key_facts && <div className="mt-1 font-mono text-[10px] text-dim">key facts: {syn.key_facts.map((k) => `${k} (${facts[k]?.source})`).join(", ")}</div>}
     </section>

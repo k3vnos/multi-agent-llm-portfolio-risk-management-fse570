@@ -490,3 +490,42 @@ ends 2020-06-11; the SII shown is the locked pre-specified composite (z-score sc
 **Tests:** pytest **130 passed**; ruff clean; Vitest **17 passed** (6 new plain-language tests); Playwright **16
 passed** (7 new Simple-Mode tests incl. mode switching), three consecutive runs. Locked M5 run unchanged
 (bit-identical; no file modified).
+
+## M10 — Reliable multi-agent LLM, live "Ask the agents", Portfolio Lens — 2026-11-04
+**Completed:**
+- **P1 LLM reliability (v4 agents)** — `src/riskcausal_agents/facts.py`, `structured.py`: numbered facts with
+  rule-computed labels (model sees numbers only), Ollama JSON-schema constrained outputs (per-fact enums), semantic
+  validator (label match; note direction, change-over-time, correlation, causal, risk-level, forecast, advice,
+  number, name, date checks), shown text rendered from facts. Tuned on the M6 tuning alerts only (2 rounds), frozen at
+  `m10-v4-r2`, scored once on a fresh held-out set. Full results: **M10_AGENT_EVAL.md**.
+- **Held-out (35 dates: 23 never-used alerts + 12 no-alert days):** label accuracy before validation **80.5%**
+  (239/297; 86.5% alerts, 66.7% quiet days); all 58 wrong/duplicate claims rejected; synthesis confirmed 33/35;
+  model notes hand-checked (first pass) **97/106** faithful — specialists 96/96, synthesis 1/10 → synthesis notes are
+  no longer displayed. Statements shown as fact are faithful by construction. Below the 90% bar for the raw model;
+  reported as is.
+- **Saved explanations for all 47 alert episodes** (`outputs/agents_v4/all/`; label accuracy 84.7%, synthesis
+  confirmed 44/47).
+- **P2 live Ask the agents** — `src/riskcausal_api/agents_live.py`: POST `/agents/run`, GET `/agents/jobs/{id}`,
+  POST `/agents/jobs/{id}/cancel`, GET `/agents/status`, GET `/agents/saved/{date}`; one job at a time, real
+  progress events from the model stream, 300 s timeout, cancellation closes the stream; never changes scores/alerts.
+  UI: `AskAgents.tsx` + `AgentTrace.tsx` in Simple (*Ask the AI agents*, compact) and Advanced (*AI agents*, with
+  inputs, rejected reasons, timings). Saved explanation shown when Ollama is unavailable.
+- **P3 Portfolio Lens (exploratory)** — `src/riskcausal_api/portfolio.py` + `PortfolioLens.tsx` (*My portfolio* /
+  *Portfolio Lens*): weights editor (must total 100%), 4 labelled examples, point-in-time returns, 63/252-day vol,
+  historical & normal VaR95, CVaR95, 1-year max drawdown, Euler risk contributions, co-movement shift, holdings mapped
+  to the network and changed links touching them; portfolio facts feed the Macro, Graph and Synthesis agents.
+  Portfolio is kept in the URL (`pf=SPY:60,IEF:40`).
+- Guided demos (both modes) now 7 steps incl. the portfolio and the live agent run; `run.sh` starts/stops a local
+  Ollama it launched itself.
+- Found and fixed: FastAPI 0.162 no longer lists included routers in `app.routes`, so the M7/M8 "GET-only" tests
+  passed vacuously; route policy is now checked on the OpenAPI route list (only the two approved POST routes).
+
+**Tests:** pytest **170 passed** (40 new: facts/validator/pipeline/cancel with a fake backend, job runner incl.
+timeout/cancel/busy/model-unavailable, portfolio point-in-time invariance, VaR/drawdown vs direct calculation,
+Euler sums, route policy); ruff clean; Vitest **21 passed** (4 new); Playwright **23 passed** (7 new incl. a real
+Qwen live run, cancellation and the full COVID-19 portfolio → agents journey).
+**Integrity:** locked M5 run, twin run and KRE run: 0 files modified; reproducibility still bit-identical; M6 eval
+sets unchanged (v4 outputs live in `outputs/agents_v4/`).
+**Limitations:** 7B label accuracy < 90% (caught by the validator, not shown); news coverage ends 2020-06-11; news
+themes validated by keywords; Portfolio Lens is exploratory, daily-rebalanced, and uses network proxies for ETFs that
+are not graph nodes; live runs take ~30–70 s on this Mac.
