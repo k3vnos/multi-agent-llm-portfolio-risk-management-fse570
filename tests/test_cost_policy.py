@@ -1,7 +1,7 @@
 """COST_POLICY.md enforcement: no paid-LLM SDKs, local-only defaults, no deployment."""
 
 import re
-from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -45,7 +45,40 @@ def test_env_example_has_no_paid_keys():
     assert "localhost" in text or "127.0.0.1" in text
 
 
-def test_no_git_remote_configured():
-    cfg = Path(PROJECT_ROOT / ".git" / "config")
-    if cfg.exists():
-        assert "[remote" not in cfg.read_text(), "local-only policy: no git remotes"
+# The one remote approved in COST_POLICY.md §3 (private team repository, authorised 2026-11-06). Any other remote
+# fails this test until the policy names it.
+APPROVED_REPO = "k3vnos/multi-agent-llm-portfolio-risk-management-fse570"
+_REMOTE_URL = re.compile(r"^(?:https://(?:[^@/]+@)?github\.com/|git@github\.com:|ssh://git@github\.com/)"
+                         r"(?P<repo>[^/]+/[^/]+?)(?:\.git)?/?$")
+
+
+def remote_is_approved(url: str) -> bool:
+    m = _REMOTE_URL.match(url.strip())
+    return bool(m) and m["repo"].lower() == APPROVED_REPO.lower()
+
+
+@pytest.mark.parametrize("url,ok", [
+    (f"https://github.com/{APPROVED_REPO}.git", True),
+    (f"https://github.com/{APPROVED_REPO}", True),
+    (f"git@github.com:{APPROVED_REPO}.git", True),
+    (f"ssh://git@github.com/{APPROVED_REPO}.git", True),
+    ("https://github.com/someone-else/multi-agent-llm-portfolio-risk-management-fse570.git", False),
+    (f"https://gitlab.com/{APPROVED_REPO}.git", False),
+    (f"https://github.com/{APPROVED_REPO}-copy.git", False),
+    ("/Users/someone/portfolio-risk-capstone", False),
+])
+def test_remote_url_matcher(url, ok):
+    assert remote_is_approved(url) is ok
+
+
+def test_only_approved_git_remote_configured():
+    try:
+        out = subprocess.run(["git", "-C", str(PROJECT_ROOT), "remote", "-v"], capture_output=True, text=True,
+                             timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        pytest.skip("git not available")
+    if out.returncode != 0:
+        pytest.skip("not a git checkout")
+    urls = {line.split()[1] for line in out.stdout.splitlines() if line.strip()}
+    bad = sorted(u for u in urls if not remote_is_approved(u))
+    assert not bad, f"unapproved git remote(s) {bad}; only {APPROVED_REPO} is approved (COST_POLICY.md §3)"

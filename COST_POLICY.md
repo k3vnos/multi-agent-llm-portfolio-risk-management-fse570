@@ -27,10 +27,17 @@ document in the repo (including `IMPLEMENTATION_PLAN.md`).
   127.0.0.1 only if Ollama is installed and not already running, and `./run.sh stop` stops only an Ollama it started.
   If Ollama is unavailable the UI shows the saved explanations; nothing falls back to another provider.
 
-## 3. Everything stays local
+## 3. Everything stays local (except the approved private repository)
 - All development and runs happen on this Mac.
-- Local `git` only. No GitHub repository creation, no `git remote add`, no `git push`, no `gh` commands.
-  The team uploads to GitHub themselves later.
+- **Approved remote (authorised by the project owner on 2026-11-06):** one **private** GitHub repository,
+  `github.com/k3vnos/multi-agent-llm-portfolio-risk-management-fse570`, for team collaboration (clone, feature
+  branches, pull requests) on GitHub's free plan. `tests/test_cost_policy.py` fails if any other remote is added;
+  a new remote (e.g. a fork) needs a policy update first.
+- Still not allowed: making the repository public, GitHub Pages or any public deployment, paid GitHub features
+  (paid Actions minutes, Codespaces, Copilot seats bought for the project, large-file storage plans), and any
+  automated upload. `data/`, `outputs/`, `.env` and model weights are gitignored and never pushed: Yahoo Finance
+  and FNSPID data are not ours to redistribute, and saved outputs contain derived market data and news headlines.
+- Everything else stays local: the pipeline, the API, the UI and the LLM all run on the developer's own machine.
 - The FastAPI service and dashboard bind to `127.0.0.1` only.
 
 ## 4. Cost verification log
@@ -49,9 +56,11 @@ Every component is checked to be free for this use **before** installation/conne
 | qwen2.5:7b (Q4_K_M, 7.6B, digest 845dbda0ea48) | Free, Apache-2.0 | 2026-10-30 — pulled with team approval | 4.4 GB disk; ~35 tokens/s on the M2; used only by the optional explanation layer |
 | FNSPID `Stock_news/All_external.csv` (streamed once) | Free public dataset | 2026-11-01 — team approved streaming the 5.7 GB file | not stored whole: 5.73 GB streamed and filtered on the fly (SHA256 recorded); 82 MB subset kept |
 | FastAPI 0.162 (MIT), uvicorn 0.54 / httpx 0.28 (BSD-3), Streamlit 1.66 (Apache-2.0), Altair 6.3 (BSD-3) | Free, open source | 2026-11-02 — installed (team approved M7) | both servers bind 127.0.0.1 (verified with lsof); Streamlit usage statistics disabled and "Deploy" button hidden (`.streamlit/config.toml`, tested); never a hosted service |
+| GitHub private repository (free plan, `k3vnos/multi-agent-llm-portfolio-risk-management-fse570`) | Free | 2026-11-06 — authorised by the project owner | private; no Pages, Actions minutes, Codespaces, LFS or other paid features enabled; data/outputs/secrets gitignored |
 
 ## 5. Defaults that enforce this policy
 - `configs/base.yaml`: `agents.enabled: false`, `agents.backend: disabled`, `api.host: 127.0.0.1`, `deploy: none`.
 - `.env.example` lists only `FRED_API_KEY` and `OLLAMA_HOST=http://localhost:11434` — no paid-API key fields.
 - `tests/test_cost_policy.py` fails if a paid-LLM SDK appears in `pyproject.toml`, if any source file imports
-  one, or if config defaults point to a non-local host or enable deployment.
+  one, if config defaults point to a non-local host or enable deployment, or if a git remote other than the
+  approved private repository is configured.

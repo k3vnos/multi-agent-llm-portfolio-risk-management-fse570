@@ -1,12 +1,52 @@
+# --- secrets (only the credential-free template is tracked) ---
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# --- Python ---
 .venv/
+venv/
 __pycache__/
 *.pyc
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
-*.egg-info/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# --- data and research outputs: stay local, regenerate (see README "Data setup") ---
+# Yahoo Finance and FNSPID data are not ours to redistribute; outputs hold derived market data and news headlines.
 /data/
 /outputs/
 !tests/fixtures/**
+
+# --- local LLM weights (Ollama keeps its models in ~/.ollama, outside the repo) ---
+.ollama/
+*.gguf
+*.safetensors
+
+# --- frontend (also covered by frontend/.gitignore) ---
+node_modules/
+frontend/dist/
+frontend/e2e-results/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# --- logs, temp, OS and editor files ---
+*.log
+*.tmp
+*.swp
 .DS_Store
 /.playwright-mcp/
+
+# --- local media and slide drafts (kept on the owner's machine, not shared) ---
+*.mp4
+*.mov
+/Status_Update_*.pptx
